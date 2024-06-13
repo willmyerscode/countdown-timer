@@ -1,0 +1,140 @@
+/* =========
+  Countdown Timer For Squarespace
+========== */
+
+[data-wm-plugin="countdown-timer"] {
+  --cd-countdown-layout: inline-flex;
+  
+  --cd-divider-color: black;
+  --cd-divider-opacity: 0.2;
+  --cd-divider-height: 40%;
+  --cd-divider-width: 2px;
+  --cd-divider-display: block;
+  --cd-divider-position: relative;
+
+  --cd-digit-desktop-font-size: 2.6em;
+  --cd-digit-mobile-font-size: 1.1em;
+  --cd-text-mobile-font-size: 1.1em;
+  --cd-text-desktop-font-size: 2.6em;
+
+  --cd-bubble-background-color: none;
+  --cd-digit-color: inherit;
+  --cd-digit-padding: 0px;
+  --cd-digit-margin: 0px;
+  --cd-bubble-border-radius: 0px;
+
+  --cd-border-width: 0px;
+  --cd-border-color: var(--tweak-text-block-background-color);
+  --cd-border-radius: 0px;
+  --cd-section-gap: 0px;
+
+  --cd-colon-content: '';
+  --cd-colon-font-size: 1.2em;
+  --cd-colon-display: none;
+
+  --cd-text-color: inherit;
+  
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+[data-wm-plugin="countdown-timer"] .digits > * {
+  font-size: var(--cd-digit-desktop-font-size);
+  color: var(--cd-digit-color);
+  margin: 0px;
+}
+
+[data-wm-plugin="countdown-timer"] .text > * {
+  font-size: var(--cd-text-desktop-font-size);
+  margin: 0px;
+  color: var(--cd-text-color);
+}
+
+@media only screen and (max-width: 766px) {
+  [data-wm-plugin="countdown-timer"] .digits > * {
+    font-size: var(--cd-digit-mobile-font-size);
+  }
+
+  [data-wm-plugin="countdown-timer"] .text > * {
+    font-size: var(--cd-text-mobile-font-size);
+  }
+}
+
+
+
+[data-wm-plugin="countdown-timer"] .digits, [data-wm-plugin="countdown-timer"] .text > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+[data-wm-plugin="countdown-timer"] .divider {
+  width: var(--cd-divider-width);
+  background: var(--cd-divider-color);
+  opacity: var(--cd-divider-opacity);
+  margin-left: 7px;
+  margin-right: 7px;
+  height: var(--cd-divider-height);
+  align-self: center;
+  display: var(--cd-divider-display);
+  position: var(--cd-divider-position);
+}
+
+
+[data-wm-plugin="countdown-timer"] .countdown-section {
+  display: var(--cd-countdown-layout);
+  gap: 5px;
+}
+
+
+[data-wm-plugin="countdown-timer"]  .text {
+  align-self: center;
+}
+
+/** Bubble Styling **/
+[data-wm-plugin="countdown-timer"]  .digits {
+  background: var(--cd-bubble-background-color);
+  margin: var(--cd-digit-margin);
+  padding: var(--cd-digit-padding);
+  border-radius: var(--cd-bubble-border-radius);
+}
+
+
+/** Border Styling **/
+[data-wm-plugin="countdown-timer"] .countdown-section {
+  border: var(--cd-border-width) solid var(--cd-border-color);
+  border-radius: var(--cd-border-radius);
+  margin: var(--cd-section-gap);
+}
+
+/** Colon Styling **/
+div[data-wm-plugin="countdown-timer"] .divider::after {
+  content: var(--cd-colon-content);
+  display: var(--cd-colon-display);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@media only screen and (max-width: 766px) {
+  div[data-wm-plugin="countdown-timer"] .divider::after {
+    font-size: var(--cd-digit-mobile-font-size);
+  }
+}
+
+@media only screen and (min-width: 767px) {
+  div[data-wm-plugin="countdown-timer"] .divider::after {
+    font-size: var(--cd-digit-desktop-font-size);
+  }
+}
+
+div[data-wm-plugin="countdown-timer"][data-loading-state ="loading"] {
+  opacity: 0;
+}
+
+div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
+  opacity: 1;
+}
