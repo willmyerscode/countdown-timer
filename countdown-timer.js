@@ -16,7 +16,6 @@ class WMCountdownTimer {
   constructor(el){
   
     el.setAttribute('data-loading-state', 'loading');
-    
     this.el = el;
 
     this.countdownDate = new Date(el.countdownDate);
@@ -24,13 +23,16 @@ class WMCountdownTimer {
     const dateAttr = el.getAttribute('data-date');
     if (dateAttr) {
       const parsedDate = new Date(dateAttr);
-      if (!isNaN(parsedDate)) {
+      if (!isNaN(parsedDate) && parsedDate !== 'Invalid Date') {
         this.countdownDate = parsedDate;
+      } else {
+        const errorEl = document.createElement('p');
+        errorEl.classList.add('show-in-editor')
+        errorEl.innerHTML = `Invalid Date format used. Be sure to use the format <em>YYYY-MM-DD</em>T<em>HH:MM:SS</em>`;
+        el.append(errorEl)
       }
     }
-
-    console.log(this.countdownDate);
-    
+        
     this.timezone = el.timezone;
     this.individualTimezone = el.getAttribute('data-timezone');
     if (this.individualTimezone) {
@@ -38,7 +40,6 @@ class WMCountdownTimer {
     }
     
     this.init();
-  
   }
 
   init () {
@@ -48,7 +49,7 @@ class WMCountdownTimer {
     this.bindEvents();
     this.resizeEvent();
     WMCountdownTimer.emitEvent('wmCountdownTimer:loaded');
-}
+  }
 
   dividers(){
     if (this.el.countdownFormat === `ddhh`) {
@@ -189,7 +190,6 @@ class WMCountdownTimer {
   bindEvents() {
     this.addPluginLoadedListener();
   }
-
   addPluginLoadedListener() {
     const handleLoaded = () => {
       window.setTimeout(() => {
@@ -198,12 +198,10 @@ class WMCountdownTimer {
     }
     document.addEventListener('wmCountdownTimer:loaded', handleLoaded)
   }
-
   resizeEvent(){
     const throttleSetWidth = this.throttle(this.setWidth.bind(this), 250);
     window.addEventListener('resize', throttleSetWidth);
   }
-
   throttle(func, limit) {
     let lastFunc;
     let lastRan;
@@ -224,7 +222,6 @@ class WMCountdownTimer {
       }
     };
   }
-
 }
 
 (function () {
@@ -267,7 +264,7 @@ function deepMerge (...objs) {
 }
 const userSettings = window.wmCountdownTimerSettings ? window.wmCountdownTimerSettings : {};
 const defaultSettings = {
-  date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+  date: new Date(Date.now()),
   dayTag: 'Days', 
   hourTag: 'Hours', 
   minuteTag: 'Minutes', 
@@ -301,7 +298,7 @@ function buildHTML(el, data) {
 
       <div class="divider minute-divider"><span class="colon">:</span></div>
     
-      <div class="seconds countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="second-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div> <div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.secondTag)}</${(mergedSettings.textStyle)}></div></div>
+      <div class="seconds countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="second-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div><div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.secondTag)}</${(mergedSettings.textStyle)}></div></div>
     
     </div>
        `;
@@ -336,18 +333,20 @@ origin = window.location.origin;
         aBDropzone.innerHTML = aBDropzone.innerHTML.replace('[countdown-timer]', '<div data-wm-plugin="countdown-timer" class="announcement-countdown"></div>');
         const announcementCountdown = aBDropzone.querySelector('[data-wm-plugin="countdown-timer"]');
         buildHTML(announcementCountdown);
-        console.log('countdown loaded');
         observer.disconnect();
       }
     }
     });
   });
 
-  observer.observe(aBDropzone, {
-    subtree: false,
-    childList: true,
-    attributes: false
-  });
+  if (aBDropzone) {
+    observer.observe(aBDropzone, {
+      subtree: false,
+      childList: true,
+      attributes: false
+    });
+  }
+
  
 
 for (let el of countdownFromCode) {
