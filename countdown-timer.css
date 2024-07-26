@@ -80,6 +80,7 @@
   opacity: var(--cd-divider-opacity);
   margin-left: 7px;
   margin-right: 7px;
+  
   height: var(--cd-divider-height);
   align-self: center;
   display: var(--cd-divider-display);
@@ -112,7 +113,10 @@
 [data-wm-plugin="countdown-timer"] .countdown-section {
   border: var(--cd-border-width) solid var(--cd-border-color);
   border-radius: var(--cd-border-radius);
-  margin: var(--cd-section-gap);
+  margin: var(--cd-section-gap) !important;
+}
+[data-wm-plugin="countdown-timer"] .text {
+  padding: 0 var(--cd-digit-padding) var(--cd-digit-padding);
 }
 
 /** Colon Styling **/
@@ -189,6 +193,14 @@ div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
   border: 1px dashed var(--headingLargeColor);
 }
 
+/*Error Message*/
+.show-in-editor {
+  display:none;
+}
+.sqs-edit-mode .show-in-editor {
+  display: block;
+}
+
 .sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"]::after {
   content: 'Countdown Timer';
   color: var(--headingLargeColor);
@@ -196,8 +208,4 @@ div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
   position: absolute;
   top: 50%;
   transform:translateX(25%);
-}
-
-div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
-  opacity: 1;
 }
