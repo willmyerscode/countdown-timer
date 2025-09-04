@@ -330,7 +330,8 @@ origin = window.location.origin;
     if (mutation.addedNodes.length !== 0) {
       const hasCountdown = aBDropzone.textContent.includes('[countdown-timer]');
       if (hasCountdown) {  
-        aBDropzone.innerHTML = aBDropzone.innerHTML.replace('[countdown-timer]', '<div data-wm-plugin="countdown-timer" class="announcement-countdown"></div>');
+        const abInner = aBDropzone.querySelector('#announcement-bar-text-inner-id');
+        abInner.innerHTML = abInner.innerHTML.replace('[countdown-timer]', '<div data-wm-plugin="countdown-timer" class="announcement-countdown"></div>');
         const announcementCountdown = aBDropzone.querySelector('[data-wm-plugin="countdown-timer"]');
         buildHTML(announcementCountdown);
         observer.disconnect();
