@@ -1,343 +1,591 @@
 class WMCountdownTimer {
-  static emitEvent(type, detail = {}, elem = document) {
-    // Make sure there's an event type
-    if (!type) return;
-  
-    // Create a new event
-    let event = new CustomEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      detail: detail,
-    });
-  
-    // Dispatch the event
-    return elem.dispatchEvent(event);
-};
-  constructor(el){
-  
-    el.setAttribute('data-loading-state', 'loading');
-    this.el = el;
+    static emitEvent(type, detail = {}, elem = document) {
+      if (!type) return;
+      let event = new CustomEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        detail: detail,
+      });
+      return elem.dispatchEvent(event);
+  };
 
-    this.countdownDate = new Date(el.countdownDate);
-   
-    const dateAttr = el.getAttribute('data-date');
-    if (dateAttr) {
-      const parsedDate = new Date(dateAttr);
-      if (!isNaN(parsedDate) && parsedDate !== 'Invalid Date') {
-        this.countdownDate = parsedDate;
-      } else {
-        const errorEl = document.createElement('p');
-        errorEl.classList.add('show-in-editor')
-        errorEl.innerHTML = `Invalid Date format used. Be sure to use the format <em>YYYY-MM-DD</em>T<em>HH:MM:SS</em>`;
-        el.append(errorEl)
+    constructor(el){
+      el.setAttribute('data-loading-state', 'loading');
+      this.el = el;
+      this.displayStyle = el.displayStyle || 'default';
+      this.isFlip = this.displayStyle === 'flip';
+
+      this.countdownDate = new Date(el.countdownDate);
+     
+      const dateAttr = el.getAttribute('data-date');
+      if (dateAttr) {
+        const parsedDate = new Date(dateAttr);
+        if (!isNaN(parsedDate) && parsedDate !== 'Invalid Date') {
+          this.countdownDate = parsedDate;
+        } else {
+          const errorEl = document.createElement('p');
+          errorEl.classList.add('show-in-editor')
+          errorEl.innerHTML = `Invalid Date format used. Be sure to use the format <em>YYYY-MM-DD</em>T<em>HH:MM:SS</em>`;
+          el.append(errorEl)
+        }
+      }
+          
+      this.timezone = el.timezone;
+      this.individualTimezone = el.getAttribute('data-timezone');
+      if (this.individualTimezone) {
+        this.timezone = this.individualTimezone;
+      }
+      
+      this.init();
+    }
+  
+    init () {
+      this.setWidth();
+      this.updateCountdown();
+      this.dividers();
+      this.bindEvents();
+      this.resizeEvent();
+      WMCountdownTimer.emitEvent('wmCountdownTimer:loaded');
+    }
+
+    createFlipCard(initialValue = '0') {
+      const flip = document.createElement('span');
+      flip.className = 'wm-flip';
+      flip.dataset.value = initialValue;
+      flip.innerHTML = `
+        <span class="wm-flip-card">
+          <span class="wm-flip-panel wm-flip-panel-top">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-bottom">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-flip">
+            <span class="wm-flip-face wm-flip-face-front">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+            <span class="wm-flip-face wm-flip-face-back">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+          </span>
+        </span>
+      `;
+      return flip;
+    }
+
+    setFlipValue(flipEl, newValue) {
+      const current = flipEl.dataset.value;
+      if (current === newValue) return;
+
+      const topPanel = flipEl.querySelector('.wm-flip-panel-top .wm-flip-digit');
+      const bottomPanel = flipEl.querySelector('.wm-flip-panel-bottom .wm-flip-digit');
+      const flipFront = flipEl.querySelector('.wm-flip-face-front .wm-flip-digit');
+      const flipBack = flipEl.querySelector('.wm-flip-face-back .wm-flip-digit');
+      const flipPanelEl = flipEl.querySelector('.wm-flip-panel-flip');
+
+      flipFront.textContent = current;
+      flipBack.textContent = newValue;
+      bottomPanel.textContent = current;
+      topPanel.textContent = newValue;
+
+      const finishFlip = () => {
+        if (!flipEl.classList.contains('flipping')) return;
+        if (flipEl._onFlipEnd) {
+          flipEl.removeEventListener('animationend', flipEl._onFlipEnd);
+          flipEl._onFlipEnd = null;
+        }
+        clearTimeout(flipEl._flipTimeout);
+
+        flipEl.dataset.value = newValue;
+        bottomPanel.textContent = newValue;
+        topPanel.textContent = newValue;
+        flipPanelEl.style.animation = 'none';
+        flipPanelEl.style.transform = 'rotateX(-180deg) translateZ(0)';
+
+        requestAnimationFrame(() => {
+          flipEl.classList.remove('flipping');
+          flipPanelEl.style.animation = '';
+          flipPanelEl.style.transform = '';
+          flipFront.textContent = newValue;
+          flipBack.textContent = newValue;
+        });
+      };
+
+      if (flipEl._onFlipEnd) {
+        flipEl.removeEventListener('animationend', flipEl._onFlipEnd);
+      }
+      clearTimeout(flipEl._flipTimeout);
+
+      flipEl._onFlipEnd = (e) => {
+        if (e.target !== flipPanelEl) return;
+        finishFlip();
+      };
+
+      flipEl.classList.remove('flipping');
+      void flipEl.offsetWidth;
+      flipEl.addEventListener('animationend', flipEl._onFlipEnd);
+      flipEl.classList.add('flipping');
+
+      const duration = parseFloat(getComputedStyle(flipEl).getPropertyValue('--cd-flip-duration')) || 0.5;
+      flipEl._flipTimeout = setTimeout(finishFlip, duration * 1000 + 50);
+    }
+
+    updateDigitUnit(container, value) {
+      if (!container) return;
+      const padded = String(value).padStart(2, '0').slice(-2);
+      const flips = container.querySelectorAll('.wm-flip');
+      if (flips.length < 2) return;
+      this.setFlipValue(flips[0], padded[0]);
+      this.setFlipValue(flips[1], padded[1]);
+    }
+
+    setDigitContent(element, value) {
+      if (!element) return;
+      if (this.isFlip) {
+        this.updateDigitUnit(element, value);
+      } else if (element) {
+        element.innerHTML = value;
       }
     }
+
+    getDigitElement(unit) {
+      const digitClasses = {
+        days: 'day-digit',
+        hours: 'hour-digit',
+        minutes: 'minute-digit',
+        seconds: 'second-digit',
+      };
+      if (this.isFlip) {
+        return this.el.querySelector(`.wm-countdown .${unit} .digits`);
+      }
+      const digitClass = digitClasses[unit];
+      return this.el.querySelector(`.wm-countdown .${unit} .digits .${digitClass}`);
+    }
+
+    hideCountdownUnit(unit) {
+      const section = this.el.querySelector(`.wm-countdown .${unit}.countdown-section`);
+      if (section) section.style.display = 'none';
+    }
+  
+    dividers(){
+      if (this.el.countdownFormat === `ddhh`) {
+        let minuteDivider = this.el.querySelector('.minute-divider');
+        let hourDivider = this.el.querySelector('.hour-divider');
+        if (minuteDivider) minuteDivider.style.display = 'none';
+        if (hourDivider) hourDivider.style.display = 'none';
+      }
+  
+      else if (this.el.countdownFormat === `hhmmss`) {
+        let dayDivider = this.el.querySelector('.day-divider');
+        if (dayDivider) dayDivider.style.display = 'none';
+      }
+    }
+  
+    setWidth(){
+      let countdownSectionCheck = this.el.querySelector(".countdown-section");
+      if (!countdownSectionCheck) return;
+      let styleCheck = window.getComputedStyle(countdownSectionCheck).display;
+      
+      if (styleCheck === 'block') {
+        const selector = this.isFlip ? '.flip-digits' : '.digits';
+        const digitElements = this.el.querySelectorAll(`.wm-countdown ${selector}`);
         
-    this.timezone = el.timezone;
-    this.individualTimezone = el.getAttribute('data-timezone');
-    if (this.individualTimezone) {
-      this.timezone = this.individualTimezone;
-    }
+        let maxWidth = 0;
     
-    this.init();
-  }
-
-  init () {
-    this.setWidth();
-    this.updateCountdown();
-    this.dividers();
-    this.bindEvents();
-    this.resizeEvent();
-    WMCountdownTimer.emitEvent('wmCountdownTimer:loaded');
-  }
-
-  dividers(){
-    if (this.el.countdownFormat === `ddhh`) {
-      let minuteDivider = this.el.querySelector('.minute-divider');
-      let hourDivider = this.el.querySelector('.hour-divider');
-      minuteDivider.style.display = 'none';
-      hourDivider.style.display = 'none';
+        digitElements.forEach(element => {
+          element.style.minWidth = '';
+          const elementWidth = element.offsetWidth;
+           if (elementWidth > maxWidth) {
+            maxWidth = elementWidth;
+           }
+        });
+      
+        digitElements.forEach(element => {
+          element.style.minWidth = maxWidth + 'px';
+        });
+      }
     }
-
+  
+    updateCountdown(){
+      const countdown = setInterval(() =>  {
+    
+      let currentTime;
+      if (this.timezone === 'Local') {
+          currentTime = new Date().getTime();
+      } else {
+          currentTime = new Date(new Date().toLocaleString('en-US', { timeZone: this.timezone })).getTime();
+      }
+      
+      let distance = this.countdownDate.getTime() - currentTime;
+    
+      let countdownDays = this.getDigitElement('days');
+      let countdownHours = this.getDigitElement('hours');
+      let countdownMinutes = this.getDigitElement('minutes');
+      let countdownSeconds = this.getDigitElement('seconds');
+    
+      if (this.el.countdownFormat === `ddhhmmss`) {
+        
+      let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+      days = days < 10 ? '0' + days : days;
+      hours = hours < 10 ? '0' + hours : hours;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      seconds = seconds < 10 ? '0' + seconds : seconds;
+    
+      this.setDigitContent(countdownDays, days);
+      this.setDigitContent(countdownHours, hours);
+      this.setDigitContent(countdownMinutes, minutes);
+      this.setDigitContent(countdownSeconds, seconds);
+        
+    }
+      
     else if (this.el.countdownFormat === `hhmmss`) {
-      let dayDivider = this.el.querySelector('.day-divider');
-      dayDivider.style.display = 'none';
-    }
-  }
-
-  setWidth(){
-
-    let countdownSectionCheck = this.el.querySelector(".countdown-section");
-    let styleCheck = window.getComputedStyle(countdownSectionCheck).display;
-    
-    if (styleCheck === 'block') {
-      const digitElements = this.el.querySelectorAll('[data-wm-plugin="countdown-timer"] .digits');
       
-      let maxWidth = 0;
+      let hours = Math.floor(distance / (1000 * 60 * 60));
+      let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      let seconds = Math.floor((distance % (1000 * 60)) / 1000);
   
-      digitElements.forEach(element => {
-        element.style.minWidth = '';
-        const elementWidth = element.offsetWidth;
-         if (elementWidth > maxWidth) {
-          maxWidth = elementWidth;
-         }
-      });
-    
+      hours = hours < 10 ? '0' + hours : hours;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      seconds = seconds < 10 ? '0' + seconds : seconds;
   
-      digitElements.forEach(element => {
-        element.style.minWidth = maxWidth + 'px';
-      });
-    }
+      this.setDigitContent(countdownHours, hours);
+      this.setDigitContent(countdownMinutes, minutes);
+      this.setDigitContent(countdownSeconds, seconds);
   
-  }
-
-  updateCountdown(){
-  
-    const countdown = setInterval(() =>  {
-  
-    let currentTime;
-    if (this.timezone === 'Local') {
-        currentTime = new Date().getTime();
-    } else {
-        currentTime = new Date(new Date().toLocaleString('en-US', { timeZone: this.timezone })).getTime();
-    }
-    
-    let distance = this.countdownDate.getTime() - currentTime;
-  
-    let countdownDays = this.el.querySelector(".wm-countdown .days .digits .day-digit");
-    let countdownHours = this.el.querySelector(".wm-countdown .hours .digits .hour-digit");
-    let countdownMinutes = this.el.querySelector(".wm-countdown .minutes .digits .minute-digit");
-    let countdownSeconds = this.el.querySelector(".wm-countdown .seconds .digits .second-digit");
-  
-    if (this.el.countdownFormat === `ddhhmmss`) {
+      this.hideCountdownUnit('days');
       
-    let days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    }
   
-    days = days < 10 ? '0' + days : days;
-    hours = hours < 10 ? '0' + hours : hours;
-    minutes = minutes < 10 ? '0' + minutes : minutes;
-    seconds = seconds < 10 ? '0' + seconds : seconds;
-  
-    countdownDays.innerHTML = days;
-    countdownHours.innerHTML = hours;
-    countdownMinutes.innerHTML = minutes;
-    countdownSeconds.innerHTML = seconds;
+    else if (this.el.countdownFormat === `ddhh`) {
       
-  }
-    
-  else if (this.el.countdownFormat === `hhmmss`) {
-    
-    let hours = Math.floor(distance / (1000 * 60 * 60));
-    let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    hours = hours < 10 ? '0' + hours : hours;
-    minutes = minutes < 10 ? '0' + minutes : minutes;
-    seconds = seconds < 10 ? '0' + seconds : seconds;
-
-    countdownHours.innerHTML = hours;
-    countdownMinutes.innerHTML = minutes;
-    countdownSeconds.innerHTML = seconds;
-
-    let dayTag = this.el.querySelector(".days .text");
-    dayTag.style.display= 'none';
-    countdownDays.parentElement.style.display = 'none';
-    
-  }
-
-  else if (this.el.countdownFormat === `ddhh`) {
-    
-    let days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-    days = days < 10 ? '0' + days : days;
-    hours = hours < 10 ? '0' + hours : hours;
-    
-    countdownDays.innerHTML = days;
-    countdownHours.innerHTML = hours;
-
-    let minuteTag = this.el.querySelector(".minutes .text");
-    let secondTag = this.el.querySelector(".seconds .text");
-    minuteTag.style.display = 'none';
-    secondTag.style.display = 'none';
-    countdownMinutes.parentElement.style.display = 'none';
-    countdownSeconds.parentElement.style.display = 'none';
-    
-    }
-
-    
-  if (isNaN(distance) || distance < 0) {
-    distance = 0;
-  }
-
-    if (distance <= 0) {
-    countdownDays.innerHTML = '00';
-    countdownHours.innerHTML = '00';
-    countdownMinutes.innerHTML = '00';
-    countdownSeconds.innerHTML = '00';
-    clearInterval(countdown); // Stop the countdown if it's finished
-    this.el.setAttribute('data-loading-state', 'complete');
-    return;
-  }
-    
-    this.el.setAttribute('data-loading-state', 'complete');
-  }, 1000);
-}
-
-  bindEvents() {
-    this.addPluginLoadedListener();
-  }
-  addPluginLoadedListener() {
-    const handleLoaded = () => {
-      window.setTimeout(() => {
+      let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   
-      }, 1000)
+      days = days < 10 ? '0' + days : days;
+      hours = hours < 10 ? '0' + hours : hours;
+      
+      this.setDigitContent(countdownDays, days);
+      this.setDigitContent(countdownHours, hours);
+  
+      this.hideCountdownUnit('minutes');
+      this.hideCountdownUnit('seconds');
+      
+      }
+
+      
+    if (isNaN(distance) || distance < 0) {
+      distance = 0;
     }
-    document.addEventListener('wmCountdownTimer:loaded', handleLoaded)
+  
+      if (distance <= 0) {
+      this.setDigitContent(countdownDays, '00');
+      this.setDigitContent(countdownHours, '00');
+      this.setDigitContent(countdownMinutes, '00');
+      this.setDigitContent(countdownSeconds, '00');
+      clearInterval(countdown);
+      this.el.setAttribute('data-loading-state', 'complete');
+      return;
+    }
+      
+      this.el.setAttribute('data-loading-state', 'complete');
+    }, 1000);
   }
-  resizeEvent(){
-    const throttleSetWidth = this.throttle(this.setWidth.bind(this), 250);
-    window.addEventListener('resize', throttleSetWidth);
+  
+    bindEvents() {
+      this.addPluginLoadedListener();
+    }
+    addPluginLoadedListener() {
+      const handleLoaded = () => {
+        window.setTimeout(() => {
+    
+        }, 1000)
+      }
+      document.addEventListener('wmCountdownTimer:loaded', handleLoaded)
+    }
+    resizeEvent(){
+      const throttleSetWidth = this.throttle(this.setWidth.bind(this), 250);
+      window.addEventListener('resize', throttleSetWidth);
+    }
+    throttle(func, limit) {
+      let lastFunc;
+      let lastRan;
+      return function() {
+        const context = this;
+        const args = arguments;
+        if (!lastRan) {
+          func.apply(context, args);
+          lastRan = Date.now();
+        } else {
+          clearTimeout(lastFunc);
+          lastFunc = setTimeout(function() {
+            if ((Date.now() - lastRan) >= limit) {
+              func.apply(context, args);
+              lastRan = Date.now();
+            }
+          }, limit - (Date.now() - lastRan));
+        }
+      };
+    }
   }
-  throttle(func, limit) {
-    let lastFunc;
-    let lastRan;
-    return function() {
-      const context = this;
-      const args = arguments;
-      if (!lastRan) {
-        func.apply(context, args);
-        lastRan = Date.now();
+  
+  (function () {
+  
+  function deepMerge (...objs) {
+    function getType (obj) {
+      return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
+    }
+    function mergeObj (clone, obj) {
+      for (let [key, value] of Object.entries(obj)) {
+        let type = getType(value);
+        if (clone[key] !== undefined && getType(clone[key]) === type && ['array', 'object'].includes(type)) {
+          clone[key] = deepMerge(clone[key], value);
+        } else {
+          clone[key] = structuredClone(value);
+        }
+      }
+    }
+    let clone = structuredClone(objs.shift());
+    for (let obj of objs) {
+      let type = getType(obj);
+      if (getType(clone) !== type) {
+        clone = structuredClone(obj);
+        continue;
+      }
+      if (type === 'array') {
+        clone = [...clone, ...structuredClone(obj)];
+      } else if (type === 'object') {
+        mergeObj(clone, obj);
       } else {
-        clearTimeout(lastFunc);
-        lastFunc = setTimeout(function() {
-          if ((Date.now() - lastRan) >= limit) {
-            func.apply(context, args);
-            lastRan = Date.now();
-          }
-        }, limit - (Date.now() - lastRan));
-      }
-    };
-  }
-}
-
-(function () {
-//If Plugin Exists
-//const pluginEls = document.querySelectorAll('[data-wm-plugin="countdown-timer"]');
-// if (!pluginEls.length) return;
-
-function deepMerge (...objs) {
-  function getType (obj) {
-    return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
-  }
-  function mergeObj (clone, obj) {
-    for (let [key, value] of Object.entries(obj)) {
-      let type = getType(value);
-      if (clone[key] !== undefined && getType(clone[key]) === type && ['array', 'object'].includes(type)) {
-        clone[key] = deepMerge(clone[key], value);
-      } else {
-        clone[key] = structuredClone(value);
+        clone = obj;
       }
     }
+  
+    return clone;
+  
   }
-  let clone = structuredClone(objs.shift());
-  for (let obj of objs) {
-    let type = getType(obj);
-    if (getType(clone) !== type) {
-      clone = structuredClone(obj);
-      continue;
-    }
-    if (type === 'array') {
-      clone = [...clone, ...structuredClone(obj)];
-    } else if (type === 'object') {
-      mergeObj(clone, obj);
-    } else {
-      clone = obj;
-    }
+  const userSettings = window.wmCountdownTimerSettings ? window.wmCountdownTimerSettings : {};
+  const defaultSettings = {
+    date: new Date(Date.now()),
+    dayTag: 'Days', 
+    hourTag: 'Hours', 
+    minuteTag: 'Minutes', 
+    secondTag: 'Seconds', 
+    countdownFormat: 'ddhhmmss',
+    timezone: 'Local',
+    digitStyle: 'h4',
+    textStyle: 'h4',
+    displayStyle: 'default',
+  };
+  const mergedSettings = deepMerge({}, defaultSettings, userSettings);
+
+  function normalizeDisplayStyle(value) {
+    return String(value).replace(/['"]/g, '').trim().toLowerCase();
   }
 
-  return clone;
+  function resolveDisplayStyleFromCss(el) {
+    if (!el) return 'default';
 
-}
-const userSettings = window.wmCountdownTimerSettings ? window.wmCountdownTimerSettings : {};
-const defaultSettings = {
-  date: new Date(Date.now()),
-  dayTag: 'Days', 
-  hourTag: 'Hours', 
-  minuteTag: 'Minutes', 
-  secondTag: 'Seconds', 
-  countdownFormat: 'ddhhmmss',
-  timezone: 'Local',
-  digitStyle: 'h4',
-  textStyle: 'h4',
-};
-const mergedSettings = deepMerge({}, defaultSettings, userSettings);
+    if (el.dataset.cdDisplayStyle) {
+      return normalizeDisplayStyle(el.dataset.cdDisplayStyle);
+    }
 
-function buildHTML(el, data) {
+    let node = el;
+    while (node) {
+      const inline = node.style.getPropertyValue('--cd-display-style').trim();
+      if (normalizeDisplayStyle(inline) === 'flip') return 'flip';
 
-  el.countdownDate = mergedSettings.date;
-
-  el.countdownFormat = mergedSettings.countdownFormat;
-
-  el.timezone = mergedSettings.timezone;
-
-  el.innerHTML = `
-    <div class="wm-countdown" data-wm-plugin="countdown-timer">
-      <div class="days countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="day-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div> <div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.dayTag)}</${(mergedSettings.textStyle)}></div></div>
-
-      <div class="divider day-divider"><span class="colon">:</span></div>
-       
-      <div class="hours countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="hour-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div> <div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.hourTag)}</${(mergedSettings.textStyle)}></div></div>
-
-      <div class="divider hour-divider"><span class="colon">:</span></div>
-    
-      <div class="minutes countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="minute-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div> <div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.minuteTag)}</${(mergedSettings.textStyle)}></div></div>
-
-      <div class="divider minute-divider"><span class="colon">:</span></div>
-    
-      <div class="seconds countdown-section"> <div class="digits"><${(mergedSettings.digitStyle)} class="second-digit digit">` + 00 + `</${(mergedSettings.digitStyle)}></div><div class="text"><${(mergedSettings.textStyle)}>${(mergedSettings.secondTag)}</${(mergedSettings.textStyle)}></div></div>
-    
-    </div>
-       `;
-  
-  //init Timer
-  el.wmCountdownTimer = new WMCountdownTimer(el);
-}
-
-function replaceAnchor(instance) {
-  const href = instance.getAttribute('href');
-  const divElement = document.createElement('div');
-  divElement.setAttribute('data-wm-plugin', 'countdown-timer');
-  divElement.classList.add('link');
-  divElement.setAttribute('data-href', href);
-  instance.parentNode.replaceChild(divElement, instance);
-  buildHTML(divElement);
-}
-
-let countdownFromCode = document.querySelectorAll('[data-wm-plugin="countdown-timer"]');
-let countdownFromLink = document.querySelectorAll('a[href*="#wm-countdown"], a[href*="#wm-countdown"]'),
-origin = window.location.origin;
-
-/** Announcement Bar **/
-  const aBDropzone = document.querySelector('.sqs-announcement-bar-dropzone');
-  
-  
-  const observer = new MutationObserver(function(mutations_list) {
-    mutations_list.forEach(function(mutation) {
-    if (mutation.addedNodes.length !== 0) {
-      const hasCountdown = aBDropzone.textContent.includes('[countdown-timer]');
-      if (hasCountdown) {  
-        const abInner = aBDropzone.querySelector('#announcement-bar-text-inner-id');
-        abInner.innerHTML = abInner.innerHTML.replace('[countdown-timer]', '<div data-wm-plugin="countdown-timer" class="announcement-countdown"></div>');
-        const announcementCountdown = aBDropzone.querySelector('[data-wm-plugin="countdown-timer"]');
-        buildHTML(announcementCountdown);
-        observer.disconnect();
+      if (node.isConnected || node === el) {
+        const computed = getComputedStyle(node).getPropertyValue('--cd-display-style').trim();
+        if (normalizeDisplayStyle(computed) === 'flip') return 'flip';
       }
+
+      node = node.parentElement;
     }
+
+    return 'default';
+  }
+
+  function resolveDisplayStyle(el) {
+    if (userSettings.displayStyle !== undefined) {
+      return normalizeDisplayStyle(userSettings.displayStyle);
+    }
+    return resolveDisplayStyleFromCss(el);
+  }
+
+  function createFlipCard(initialValue = '0') {
+    return `
+      <span class="wm-flip" data-value="${initialValue}">
+        <span class="wm-flip-card">
+          <span class="wm-flip-panel wm-flip-panel-top">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-bottom">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-flip">
+            <span class="wm-flip-face wm-flip-face-front">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+            <span class="wm-flip-face wm-flip-face-back">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+          </span>
+        </span>
+      </span>`;
+  }
+
+  function buildFlipDigits() {
+    return createFlipCard('0') + createFlipCard('0');
+  }
+
+  function buildDigitsHtml(unitClass, settings) {
+    if (settings.displayStyle === 'flip') {
+      return `<div class="digits flip-digits ${unitClass}">${buildFlipDigits()}</div>`;
+    }
+    return `<div class="digits"><${settings.digitStyle} class="${unitClass} digit">00</${settings.digitStyle}></div>`;
+  }
+  
+  function buildHTML(el, data) {
+    const settings = deepMerge({}, mergedSettings, {
+      displayStyle: resolveDisplayStyle(el),
     });
+
+    el.countdownDate = settings.date;
+    el.countdownFormat = settings.countdownFormat;
+    el.timezone = settings.timezone;
+    el.displayStyle = settings.displayStyle;
+    el.dataset.displayStyle = settings.displayStyle;
+
+    const isFlip = settings.displayStyle === 'flip';
+    const flipClass = isFlip ? ' display-flip' : '';
+    el.classList.toggle('display-flip', isFlip);
+
+    el.innerHTML = `
+      <div class="wm-countdown${flipClass}" data-cd-style="${settings.displayStyle}">
+        <div class="days countdown-section tick-group">
+          ${buildDigitsHtml('day-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.dayTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider day-divider"><span class="colon">:</span></div>
+         
+        <div class="hours countdown-section tick-group">
+          ${buildDigitsHtml('hour-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.hourTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider hour-divider"><span class="colon">:</span></div>
+      
+        <div class="minutes countdown-section tick-group">
+          ${buildDigitsHtml('minute-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.minuteTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider minute-divider"><span class="colon">:</span></div>
+      
+        <div class="seconds countdown-section tick-group">
+          ${buildDigitsHtml('second-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.secondTag}</${settings.textStyle}></div>
+        </div>
+      
+      </div>
+         `;
+    
+    el.wmCountdownTimer = new WMCountdownTimer(el);
+  }
+  
+  function replaceAnchor(instance) {
+    const href = instance.getAttribute('href');
+    const divElement = document.createElement('div');
+    divElement.setAttribute('data-wm-plugin', 'countdown-timer');
+    divElement.classList.add('link');
+    divElement.setAttribute('data-href', href);
+    instance.parentNode.replaceChild(divElement, instance);
+    buildHTML(divElement);
+  }
+  
+  function initCountdownTimers() {
+    const countdownFromCode = document.querySelectorAll('[data-wm-plugin="countdown-timer"]:not([data-cd-built])');
+
+    for (let el of countdownFromCode) {
+      if (el.closest('.sqs-announcement-bar-dropzone')) continue;
+      if (el.parentElement && el.parentElement.closest('[data-wm-plugin="countdown-timer"]')) continue;
+      buildHTML(el);
+      el.setAttribute('data-cd-built', '');
+    }
+
+    const countdownFromLink = document.querySelectorAll('a[href*="#wm-countdown"], a[href*="#wm-countdown"]');
+    for (let el of countdownFromLink) {
+      replaceAnchor(el);
+      el.classList.add('link');
+    }
+  }
+
+  /** Announcement Bar **/
+  const aBDropzone = document.querySelector('.sqs-announcement-bar-dropzone');
+  let announcementBarHandled = false;
+
+  function initAnnouncementBar() {
+    if (!aBDropzone || announcementBarHandled) return;
+
+    const abInner = aBDropzone.querySelector('#announcement-bar-text-inner-id');
+    if (!abInner) return;
+
+    const hasShortcode = /\[countdown-timer\]/.test(abInner.innerHTML);
+    const timers = abInner.querySelectorAll('[data-wm-plugin="countdown-timer"]');
+
+    timers.forEach((timer, index) => {
+      if (index > 0) timer.remove();
+    });
+
+    let timer = abInner.querySelector('[data-wm-plugin="countdown-timer"]');
+
+    if (hasShortcode) {
+      abInner.innerHTML = abInner.innerHTML.replace(/\[countdown-timer\]/g, '');
+      if (!timer) {
+        timer = document.createElement('div');
+        timer.setAttribute('data-wm-plugin', 'countdown-timer');
+        timer.className = 'announcement-countdown';
+        abInner.appendChild(timer);
+      }
+    }
+
+    if (!timer) return;
+
+    announcementBarHandled = true;
+
+    if (!timer.hasAttribute('data-cd-built')) {
+      buildHTML(timer);
+      timer.setAttribute('data-cd-built', '');
+    }
+  }
+
+  function runInit() {
+    initAnnouncementBar();
+    initCountdownTimers();
+  }
+
+  function scheduleInit() {
+    const run = () => requestAnimationFrame(runInit);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+  }
+
+  const observer = new MutationObserver(function(mutations_list) {
+    for (const mutation of mutations_list) {
+      if (mutation.addedNodes.length !== 0) {
+        initAnnouncementBar();
+        observer.disconnect();
+        break;
+      }
+    }
   });
 
   if (aBDropzone) {
@@ -346,16 +594,8 @@ origin = window.location.origin;
       childList: true,
       attributes: false
     });
+    initAnnouncementBar();
   }
 
- 
-
-for (let el of countdownFromCode) {
-    buildHTML(el);
-  
-}
-for (let el of countdownFromLink) {
-  replaceAnchor(el);
-  el.classList.add('link');
-}
-})();
+  scheduleInit();
+  })();
