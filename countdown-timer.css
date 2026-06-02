@@ -3,209 +3,464 @@
 ========== */
 
 [data-wm-plugin="countdown-timer"] {
-  --cd-countdown-layout: inline-flex;
+    --cd-countdown-layout: inline-flex;
+    
+    --cd-divider-color: var(--tweak-text-block-background-color);
+    --cd-divider-opacity: 0.2;
+    --cd-divider-width: 2px;
+    --cd-divider-display: block;
+    --cd-divider-position: relative;
+    --cd-divider-height: calc(var(--cd-digit-desktop-font-size) * 0.45);
   
-  --cd-divider-color: var(--tweak-text-block-background-color);
-  --cd-divider-opacity: 0.2;
-  --cd-divider-height: 40%;
-  --cd-divider-width: 2px;
-  --cd-divider-display: block;
-  --cd-divider-position: relative;
-
-  --cd-digit-desktop-font-size: 2.6em;
-  --cd-digit-mobile-font-size: 1.1em;
-  --cd-text-mobile-font-size: 1.1em;
-  --cd-text-desktop-font-size: 2.6em;
-
-  --cd-bubble-background-color: none;
-  --cd-digit-color: inherit;
-  --cd-digit-padding: 0px;
-  --cd-digit-margin: 0px;
-  --cd-bubble-border-radius: 0px;
-
-  --cd-border-width: 0px;
-  --cd-border-color: var(--tweak-text-block-background-color);
-  --cd-border-radius: 0px;
-  --cd-section-gap: 0px;
-
-  --cd-announcement-desktop-font: 0.4em;
-  --cd-announcement-mobile-font: 0.8em;
-  --cd-announcement-margin-left: 0px;
-
-  --cd-colon-font-size: 1.2em;
-  --cd-colon-display: none;
-
-  --cd-text-color: inherit;
+    --cd-digit-desktop-font-size: 2.6em;
+    --cd-digit-mobile-font-size: 1.1em;
+    --cd-text-mobile-font-size: 1.1em;
+    --cd-text-desktop-font-size: 2.6em;
   
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  text-align: center;
-}
+    --cd-bubble-background-color: none;
+    --cd-digit-color: inherit;
+    --cd-digit-padding: 0px;
+    --cd-digit-margin: 0px;
+    --cd-bubble-border-radius: 0px;
+  
+    --cd-border-width: 0px;
+    --cd-border-color: var(--tweak-text-block-background-color);
+    --cd-border-radius: 0px;
+    --cd-section-gap: 0px;
+  
+    --cd-announcement-desktop-font: 0.4em;
+    --cd-announcement-mobile-font: 0.8em;
+    --cd-announcement-margin-left: 0px;
+  
+    --cd-colon-font-size: 1.2em;
+    --cd-colon-display: none;
+  
+    --cd-text-color: inherit;
 
-[data-wm-plugin="countdown-timer"] .digits > * {
-  font-size: var(--cd-digit-desktop-font-size);
-  color: var(--cd-digit-color);
-  margin: 0px;
-}
+    /* Set --cd-display-style: flip; for split-flap (JS reads this; do not set "default" here) */
 
-[data-wm-plugin="countdown-timer"] .text > * {
-  font-size: var(--cd-text-desktop-font-size);
-  margin: 0px;
-  color: var(--cd-text-color);
-}
-
-@media only screen and (max-width: 766px) {
-  [data-wm-plugin="countdown-timer"] .digits > * {
-    font-size: var(--cd-digit-mobile-font-size);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
   }
-
-  [data-wm-plugin="countdown-timer"] .text > * {
-    font-size: var(--cd-text-mobile-font-size);
-  }
-}
-
-
-
-[data-wm-plugin="countdown-timer"] .digits, [data-wm-plugin="countdown-timer"] .text > * {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-
-[data-wm-plugin="countdown-timer"] .divider {
-  width: var(--cd-divider-width);
-  background: var(--cd-divider-color);
-  opacity: var(--cd-divider-opacity);
-  margin-left: 7px;
-  margin-right: 7px;
   
-  height: var(--cd-divider-height);
-  align-self: center;
-  display: var(--cd-divider-display);
-  position: var(--cd-divider-position);
-  align-items: center;
-  justify-content: center;
-}
-
-
-[data-wm-plugin="countdown-timer"] .countdown-section {
-  display: var(--cd-countdown-layout);
-  gap: 5px;
-}
-
-
-[data-wm-plugin="countdown-timer"]  .text {
-  align-self: center;
-}
-
-/** Bubble Styling **/
-[data-wm-plugin="countdown-timer"] .digits {
-  background: var(--cd-bubble-background-color);
-  margin: var(--cd-digit-margin);
-  padding: var(--cd-digit-padding);
-  border-radius: var(--cd-bubble-border-radius);
-}
-
-
-/** Border Styling **/
-[data-wm-plugin="countdown-timer"] .countdown-section {
-  border: var(--cd-border-width) solid var(--cd-border-color);
-  border-radius: var(--cd-border-radius);
-  margin: var(--cd-section-gap) !important;
-}
-[data-wm-plugin="countdown-timer"] .text {
-  padding: 0 var(--cd-digit-padding) var(--cd-digit-padding);
-}
-
-/** Colon Styling **/
-div[data-wm-plugin="countdown-timer"] .divider .colon {
-  display: var(--cd-colon-display);
-  line-height: normal;
-  align-self: baseline;
-}
-
-/** Announcement Bar **/
-.announcement-countdown [data-wm-plugin="countdown-timer"] {
-  --cd-divider-color: var(--announcement-bar-text-color);
-  --cd-divider-display: block;
-  --cd-divider-opacity: 0.2;
-  --cd-divider-height: 40%;
-  --cd-divider-width: 2px;
-  
-  --cd-countdown-layout: inline-flex;
-  --cd-bubble-background-color: none;
-  --cd-digit-color: var(--announcement-bar-text-color);
-  --cd-digit-padding: 0px;
-  --cd-digit-margin: 0px;
-  --cd-bubble-border-radius: 0px;
-  --cd-text-color: var(--announcement-bar-text-color);
-  --cd-border-width: 0px;
-  --cd-border-color: var(--tweak-text-block-background-color);
-  --cd-border-radius: 0px;
-  --cd-section-gap: 0px;
-
-}
-
-div.announcement-countdown {
-  font-size: var(--cd-announcement-mobile-font);
-  margin-left: var(--cd-announcement-margin-left);
-}
-
-@media only screen and (min-width: 767px) {
-  div.announcement-countdown {
-    font-size: var(--cd-announcement-desktop-font);
-}
-  
-}
-
-
-
-@media only screen and (max-width: 766px) {
-  div[data-wm-plugin="countdown-timer"] .divider .colon {
-    font-size: var(--cd-digit-mobile-font-size);
-  }
-}
-
-@media only screen and (min-width: 767px) {
-  div[data-wm-plugin="countdown-timer"] .divider .colon {
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits > * {
     font-size: var(--cd-digit-desktop-font-size);
+    color: var(--cd-digit-color);
+    margin: 0px;
   }
-}
+  
+  [data-wm-plugin="countdown-timer"] .text > * {
+    font-size: var(--cd-text-desktop-font-size);
+    margin: 0px;
+    color: var(--cd-text-color);
+  }
+  
+  @media only screen and (max-width: 766px) {
+    [data-wm-plugin="countdown-timer"] {
+      --cd-divider-height: calc(var(--cd-digit-mobile-font-size) * 0.45);
+    }
 
-div[data-wm-plugin="countdown-timer"][data-loading-state ="loading"] {
-  opacity: 0;
-}
+    [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
+    [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits > * {
+      font-size: var(--cd-digit-mobile-font-size);
+    }
 
-div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
-  opacity: 1;
-}
+    [data-wm-plugin="countdown-timer"] .text > * {
+      font-size: var(--cd-text-mobile-font-size);
+    }
+  }
+  
+  
+  
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits,
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
+  [data-wm-plugin="countdown-timer"] .text > * {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  
+  [data-wm-plugin="countdown-timer"] .divider {
+    width: var(--cd-divider-width);
+    background: var(--cd-divider-color);
+    opacity: var(--cd-divider-opacity);
+    margin-left: 7px;
+    margin-right: 7px;
+    
+    height: var(--cd-divider-height);
+    align-self: center;
+    display: var(--cd-divider-display);
+    position: var(--cd-divider-position);
+    align-items: center;
+    justify-content: center;
+  }
+  
+  
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
 
-.sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"] {
-  color: transparent;
-  background: transparent;
-  font-size: 0;
-  position: absolute;
-  line-height: 0;
-  width: 100%;
-  height: 25px;
-  border: 1px dashed var(--headingLargeColor);
-}
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .divider {
+    flex-shrink: 0;
+    align-self: center;
+  }
 
-/*Error Message*/
-.show-in-editor {
-  display:none;
-}
-.sqs-edit-mode .show-in-editor {
-  display: block;
-}
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .countdown-section,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .countdown-section {
+    display: var(--cd-countdown-layout);
+    gap: 5px;
+  }
+  
+  
+  [data-wm-plugin="countdown-timer"]  .text {
+    align-self: center;
+  }
+  
+  /** Bubble Styling **/
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits {
+    background: var(--cd-bubble-background-color);
+    margin: var(--cd-digit-margin);
+    padding: var(--cd-digit-padding);
+    border-radius: var(--cd-bubble-border-radius);
+  }
+  
+  
+  /** Border Styling **/
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .countdown-section,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .countdown-section {
+    border: var(--cd-border-width) solid var(--cd-border-color);
+    border-radius: var(--cd-border-radius);
+    margin: var(--cd-section-gap) !important;
+  }
+  [data-wm-plugin="countdown-timer"] .text {
+    padding: 0 var(--cd-digit-padding) var(--cd-digit-padding);
+  }
+  
+  /** Colon Styling **/
+  div[data-wm-plugin="countdown-timer"] .divider .colon {
+    display: var(--cd-colon-display);
+    line-height: normal;
+    align-self: baseline;
+  }
+  
+  /** Announcement Bar **/
+  [data-wm-plugin="countdown-timer"].announcement-countdown,
+  .announcement-countdown[data-wm-plugin="countdown-timer"] {
+    --cd-divider-color: var(--announcement-bar-text-color);
+    --cd-divider-display: block;
+    --cd-divider-opacity: 0.2;
+    --cd-divider-height: calc(var(--cd-digit-desktop-font-size) * 0.45);
+    --cd-divider-width: 2px;
+    
+    --cd-countdown-layout: inline-flex;
+    --cd-bubble-background-color: none;
+    --cd-digit-color: var(--announcement-bar-text-color);
+    --cd-digit-padding: 0px;
+    --cd-digit-margin: 0px;
+    --cd-bubble-border-radius: 0px;
+    --cd-text-color: var(--announcement-bar-text-color);
+    --cd-border-width: 0px;
+    --cd-border-color: var(--tweak-text-block-background-color);
+    --cd-border-radius: 0px;
+    --cd-section-gap: 0px;
+  
+  }
+  
+  div.announcement-countdown {
+    font-size: var(--cd-announcement-mobile-font);
+    margin-left: var(--cd-announcement-margin-left);
+  }
+  
+  @media only screen and (min-width: 767px) {
+    div.announcement-countdown {
+      font-size: var(--cd-announcement-desktop-font);
+  }
+    
+  }
+  
+  
+  
+  @media only screen and (max-width: 766px) {
+    div[data-wm-plugin="countdown-timer"] .divider .colon {
+      font-size: var(--cd-digit-mobile-font-size);
+    }
+  }
+  
+  @media only screen and (min-width: 767px) {
+    div[data-wm-plugin="countdown-timer"] .divider .colon {
+      font-size: var(--cd-digit-desktop-font-size);
+    }
+  }
+  
+  div[data-wm-plugin="countdown-timer"][data-loading-state ="loading"] {
+    opacity: 0;
+  }
+  
+  div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
+    opacity: 1;
+  }
+  
+  .sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"] {
+    color: transparent;
+    background: transparent;
+    font-size: 0;
+    position: absolute;
+    line-height: 0;
+    width: 100%;
+    height: 25px;
+    border: 1px dashed var(--headingLargeColor);
+  }
+  
+  /*Error Message*/
+  .show-in-editor {
+    display:none;
+  }
+  .sqs-edit-mode .show-in-editor {
+    display: block;
+  }
+  
+  .sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"]::after {
+    content: 'Countdown Timer';
+    color: var(--headingLargeColor);
+    font-size: 12px;
+    position: absolute;
+    top: 50%;
+    transform:translateX(25%);
+  }
 
-.sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"]::after {
-  content: 'Countdown Timer';
-  color: var(--headingLargeColor);
-  font-size: 12px;
-  position: absolute;
-  top: 50%;
-  transform:translateX(25%);
-}
+  /* =========
+    Flip / Split-Flap Display Style
+  ========== */
+
+  [data-wm-plugin="countdown-timer"] .display-flip,
+  [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
+    --cd-flip-panel-bg: var(--headingExtraLargeColor);
+    --cd-flip-panel-color: var(--siteBackgroundColor);
+    --cd-flip-font-size: 4.5em;
+    --cd-flip-char-width: 1.2em;
+    --cd-flip-line-height: 1.45;
+    --cd-flip-duration: 0.7s;
+    --cd-flip-gap: 0.75em;
+    --cd-flip-digit-gap: 0.1em;
+    --cd-flip-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    --cd-flip-hinge-color: color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
+    --cd-flip-bottom-shadow: linear-gradient(
+      180deg,
+      color-mix(in srgb, #000 8%, transparent) 0%,
+      transparent 50%
+    );
+
+    white-space: nowrap;
+  }
+
+  [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: var(--cd-flip-gap);
+  }
+
+  [data-wm-plugin="countdown-timer"].display-flip .countdown-section,
+  [data-wm-plugin="countdown-timer"] .display-flip .countdown-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 !important;
+    text-align: center;
+    gap: 5px;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .flip-digits {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cd-flip-digit-gap);
+    font-size: var(--cd-flip-font-size);
+    background: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  [data-wm-plugin="countdown-timer"].display-flip .divider,
+  [data-wm-plugin="countdown-timer"] .display-flip .divider {
+    display: none;
+  }
+
+  [data-wm-plugin="countdown-timer"].display-flip .countdown-section,
+  [data-wm-plugin="countdown-timer"] .display-flip .countdown-section {
+    border: none;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip {
+    display: inline-block;
+    position: relative;
+    width: var(--cd-flip-char-width);
+    height: calc(var(--cd-flip-line-height) * 1em);
+    perspective: 600px;
+    font-weight: bold;
+    border-radius: var(--cd-flip-border-radius);
+    overflow: visible;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-card {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transform-style: preserve-3d;
+    box-shadow: var(--cd-flip-shadow);
+    overflow: visible;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    background: var(--cd-flip-panel-bg);
+    color: var(--cd-flip-panel-color);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-top {
+    top: 0;
+    z-index: 1;
+    transform: translateZ(0);
+    transform-origin: 50% 100%;
+    border-radius: var(--cd-flip-border-radius) var(--cd-flip-border-radius) 0 0;
+    border-bottom: 1px solid var(--cd-flip-hinge-color);
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom {
+    top: 50%;
+    bottom: auto;
+    z-index: 0;
+    transform: translateZ(0);
+    transform-origin: 50% 0%;
+    border-radius: 0 0 var(--cd-flip-border-radius) var(--cd-flip-border-radius);
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--cd-flip-bottom-shadow);
+    pointer-events: none;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-flip {
+    top: 0;
+    height: 50%;
+    z-index: 2;
+    transform-origin: 50% 100%;
+    transform: rotateX(0deg) translateZ(1px);
+    transform-style: preserve-3d;
+    overflow: visible;
+    backface-visibility: visible;
+    -webkit-backface-visibility: visible;
+    border-radius: var(--cd-flip-border-radius) var(--cd-flip-border-radius) 0 0;
+    will-change: transform;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: var(--cd-flip-panel-bg);
+    color: var(--cd-flip-panel-color);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: inherit;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-front {
+    transform: rotateX(0deg);
+    border-bottom: 1px solid var(--cd-flip-hinge-color);
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-back {
+    transform: rotateX(180deg);
+    border-radius: 0 0 var(--cd-flip-border-radius) var(--cd-flip-border-radius);
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-back .wm-flip-panel-text {
+    top: auto;
+    bottom: 0;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip.flipping .wm-flip-panel-flip::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.2) 100%);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-text {
+    display: block;
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 200%;
+    line-height: var(--cd-flip-line-height);
+    text-align: center;
+    font-size: 1em;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-top .wm-flip-panel-text,
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-front .wm-flip-panel-text {
+    top: 0;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom .wm-flip-panel-text {
+    bottom: 0;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-digit {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+
+  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip.flipping .wm-flip-panel-flip {
+    visibility: visible;
+    animation: wm-countdown-flip-down var(--cd-flip-duration) cubic-bezier(0.33, 0.85, 0.45, 1) forwards;
+  }
+
+  @keyframes wm-countdown-flip-down {
+    0% {
+      transform: rotateX(0deg) translateZ(1px);
+    }
+    85% {
+      transform: rotateX(-180deg) translateZ(0);
+    }
+    100% {
+      transform: rotateX(-180deg) translateZ(0);
+    }
+  }
+
+  @media only screen and (max-width: 766px) {
+    [data-wm-plugin="countdown-timer"] .display-flip,
+    [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
+      --cd-flip-font-size: 2.7em;
+      --cd-flip-gap: 0.5em;
+    }
+
+  }
