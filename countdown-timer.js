@@ -1,498 +1,744 @@
-/* =========
-  Countdown Timer For Squarespace
-========== */
+class WMCountdownTimer {
+    static emitEvent(type, detail = {}, elem = document) {
+      if (!type) return;
+      let event = new CustomEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        detail: detail,
+      });
+      return elem.dispatchEvent(event);
+  };
 
-[data-wm-plugin="countdown-timer"] {
-    --cd-countdown-layout: inline-flex;
+    constructor(el){
+      el.setAttribute('data-loading-state', 'loading');
+      this.el = el;
+      this.displayStyle = el.displayStyle || 'default';
+      this.isFlip = this.displayStyle === 'flip';
+
+      this.countdownDate = new Date(el.countdownDate);
+     
+      const dateAttr = el.getAttribute('data-date');
+      if (dateAttr) {
+        const parsedDate = new Date(dateAttr);
+        if (!isNaN(parsedDate) && parsedDate !== 'Invalid Date') {
+          this.countdownDate = parsedDate;
+        } else {
+          const errorEl = document.createElement('p');
+          errorEl.classList.add('show-in-editor')
+          errorEl.innerHTML = `Invalid Date format used. Be sure to use the format <em>YYYY-MM-DD</em>T<em>HH:MM:SS</em>`;
+          el.append(errorEl)
+        }
+      }
+          
+      this.timezone = el.timezone;
+      this.individualTimezone = el.getAttribute('data-timezone');
+      if (this.individualTimezone) {
+        this.timezone = this.individualTimezone;
+      }
+      
+      this.init();
+    }
+  
+    init () {
+      this.setWidth();
+      this.updateCountdown();
+      this.dividers();
+      this.bindEvents();
+      this.resizeEvent();
+      WMCountdownTimer.emitEvent('wmCountdownTimer:loaded');
+    }
+
+    createFlipCard(initialValue = '0') {
+      const flip = document.createElement('span');
+      flip.className = 'wm-flip';
+      flip.dataset.value = initialValue;
+      flip.innerHTML = `
+        <span class="wm-flip-card">
+          <span class="wm-flip-panel wm-flip-panel-top">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-bottom">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-flip">
+            <span class="wm-flip-face wm-flip-face-front">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+            <span class="wm-flip-face wm-flip-face-back">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+          </span>
+        </span>
+      `;
+      return flip;
+    }
+
+    setFlipValue(flipEl, newValue) {
+      const current = flipEl.dataset.value;
+      if (current === newValue) return;
+
+      const topPanel = flipEl.querySelector('.wm-flip-panel-top .wm-flip-digit');
+      const bottomPanel = flipEl.querySelector('.wm-flip-panel-bottom .wm-flip-digit');
+      const flipFront = flipEl.querySelector('.wm-flip-face-front .wm-flip-digit');
+      const flipBack = flipEl.querySelector('.wm-flip-face-back .wm-flip-digit');
+      const flipPanelEl = flipEl.querySelector('.wm-flip-panel-flip');
+
+      flipFront.textContent = current;
+      flipBack.textContent = newValue;
+      bottomPanel.textContent = current;
+      topPanel.textContent = newValue;
+
+      const finishFlip = () => {
+        if (!flipEl.classList.contains('flipping')) return;
+        if (flipEl._onFlipEnd) {
+          flipEl.removeEventListener('animationend', flipEl._onFlipEnd);
+          flipEl._onFlipEnd = null;
+        }
+        clearTimeout(flipEl._flipTimeout);
+
+        flipEl.dataset.value = newValue;
+        bottomPanel.textContent = newValue;
+        topPanel.textContent = newValue;
+        flipPanelEl.style.animation = 'none';
+        flipPanelEl.style.transform = 'rotateX(-180deg) translateZ(0)';
+
+        requestAnimationFrame(() => {
+          flipEl.classList.remove('flipping');
+          flipPanelEl.style.animation = '';
+          flipPanelEl.style.transform = '';
+          flipFront.textContent = newValue;
+          flipBack.textContent = newValue;
+        });
+      };
+
+      if (flipEl._onFlipEnd) {
+        flipEl.removeEventListener('animationend', flipEl._onFlipEnd);
+      }
+      clearTimeout(flipEl._flipTimeout);
+
+      flipEl._onFlipEnd = (e) => {
+        if (e.target !== flipPanelEl) return;
+        finishFlip();
+      };
+
+      flipEl.classList.remove('flipping');
+      void flipEl.offsetWidth;
+      flipEl.addEventListener('animationend', flipEl._onFlipEnd);
+      flipEl.classList.add('flipping');
+
+      const duration = parseFloat(getComputedStyle(flipEl).getPropertyValue('--cd-flip-duration')) || 0.5;
+      flipEl._flipTimeout = setTimeout(finishFlip, duration * 1000 + 50);
+    }
+
+    updateDigitUnit(container, value) {
+      if (!container) return;
+      const padded = String(value).padStart(2, '0').slice(-2);
+      const flips = container.querySelectorAll('.wm-flip');
+      if (flips.length < 2) return;
+      this.setFlipValue(flips[0], padded[0]);
+      this.setFlipValue(flips[1], padded[1]);
+    }
+
+    setDigitContent(element, value) {
+      if (!element) return;
+      if (this.isFlip) {
+        this.updateDigitUnit(element, value);
+      } else if (element) {
+        element.innerHTML = value;
+      }
+    }
+
+    getDigitElement(unit) {
+      const digitClasses = {
+        days: 'day-digit',
+        hours: 'hour-digit',
+        minutes: 'minute-digit',
+        seconds: 'second-digit',
+      };
+      if (this.isFlip) {
+        return this.el.querySelector(`.wm-countdown .${unit} .digits`);
+      }
+      const digitClass = digitClasses[unit];
+      return this.el.querySelector(`.wm-countdown .${unit} .digits .${digitClass}`);
+    }
+
+    hideCountdownUnit(unit) {
+      const section = this.el.querySelector(`.wm-countdown .${unit}.countdown-section`);
+      if (section) section.style.display = 'none';
+    }
+  
+    dividers(){
+      if (this.el.countdownFormat === `ddhh`) {
+        let minuteDivider = this.el.querySelector('.minute-divider');
+        let hourDivider = this.el.querySelector('.hour-divider');
+        if (minuteDivider) minuteDivider.style.display = 'none';
+        if (hourDivider) hourDivider.style.display = 'none';
+      }
+  
+      else if (this.el.countdownFormat === `hhmmss`) {
+        let dayDivider = this.el.querySelector('.day-divider');
+        if (dayDivider) dayDivider.style.display = 'none';
+      }
+    }
+  
+    setWidth(){
+      let countdownSectionCheck = this.el.querySelector(".countdown-section");
+      if (!countdownSectionCheck) return;
+      let styleCheck = window.getComputedStyle(countdownSectionCheck).display;
+      
+      if (styleCheck === 'block') {
+        const selector = this.isFlip ? '.flip-digits' : '.digits';
+        const digitElements = this.el.querySelectorAll(`.wm-countdown ${selector}`);
+        
+        let maxWidth = 0;
     
-    --cd-divider-color: var(--tweak-text-block-background-color);
-    --cd-divider-opacity: 0.2;
-    --cd-divider-width: 2px;
-    --cd-divider-display: block;
-    --cd-divider-position: relative;
-    --cd-divider-height: calc(var(--cd-digit-desktop-font-size) * 0.45);
+        digitElements.forEach(element => {
+          element.style.minWidth = '';
+          const elementWidth = element.offsetWidth;
+           if (elementWidth > maxWidth) {
+            maxWidth = elementWidth;
+           }
+        });
+      
+        digitElements.forEach(element => {
+          element.style.minWidth = maxWidth + 'px';
+        });
+      }
+    }
   
-    --cd-digit-desktop-font-size: 2.6em;
-    --cd-digit-mobile-font-size: 1.1em;
-    --cd-text-mobile-font-size: 1.1em;
-    --cd-text-desktop-font-size: 2.6em;
-  
-    --cd-bubble-background-color: none;
-    --cd-digit-color: inherit;
-    --cd-digit-padding: 0px;
-    --cd-digit-margin: 0px;
-    --cd-bubble-border-radius: 0px;
-  
-    --cd-border-width: 0px;
-    --cd-border-color: var(--tweak-text-block-background-color);
-    --cd-border-radius: 0px;
-    --cd-section-gap: 0px;
-  
-    --cd-announcement-desktop-font: 0.4em;
-    --cd-announcement-mobile-font: 0.8em;
-    --cd-announcement-margin-left: 0px;
-  
-    --cd-colon-font-size: 1.2em;
-    --cd-colon-display: none;
-  
-    --cd-text-color: inherit;
-
-    --cd-flip-border-radius: 0px;
-    --cd-flip-panel-bg: var(--headingExtraLargeColor);
-    --cd-flip-panel-color: var(--siteBackgroundColor);
-    --cd-flip-label-color: inherit;
-    --cd-flip-font-size: 4.5em;
-    --cd-flip-mobile-font-size: 2.7em;
-    --cd-flip-label-font-size: 1em;
-    --cd-flip-label-mobile-font-size: 1em;
-    --cd-flip-char-width: 1.2em;
-    --cd-flip-line-height: 1.45;
-    --cd-flip-duration: 0.7s;
-    --cd-flip-gap: 0.75em;
-    --cd-flip-mobile-gap: 0.5em;
-    --cd-flip-digit-gap: 0.1em;
-    --cd-flip-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-
-    /* Set --cd-display-style: flip; for split-flap (JS reads this; do not set "default" here) */
-
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    text-align: center;
-  }
-  
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits > * {
-    font-size: var(--cd-digit-desktop-font-size);
-    color: var(--cd-digit-color);
-    margin: 0px;
-  }
-  
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
-    font-size: var(--cd-text-desktop-font-size);
-    margin: 0px;
-    color: var(--cd-text-color);
-  }
-  
-  @media only screen and (max-width: 766px) {
-    [data-wm-plugin="countdown-timer"] {
-      --cd-divider-height: calc(var(--cd-digit-mobile-font-size) * 0.45);
+    getCurrentTime() {
+      if (this.timezone === 'Local') {
+        return Date.now();
+      }
+      return new Date(new Date().toLocaleString('en-US', { timeZone: this.timezone })).getTime();
     }
 
-    [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
-    [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits > * {
-      font-size: var(--cd-digit-mobile-font-size);
+    stopCountdown() {
+      if (this._countdownInterval) {
+        clearInterval(this._countdownInterval);
+        this._countdownInterval = null;
+      }
+      if (this._countdownTimeout) {
+        clearTimeout(this._countdownTimeout);
+        this._countdownTimeout = null;
+      }
     }
 
-    [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
-    [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
-      font-size: var(--cd-text-mobile-font-size);
+    tick() {
+      let distance = this.countdownDate.getTime() - this.getCurrentTime();
+
+      const countdownDays = this.getDigitElement('days');
+      const countdownHours = this.getDigitElement('hours');
+      const countdownMinutes = this.getDigitElement('minutes');
+      const countdownSeconds = this.getDigitElement('seconds');
+
+      if (this.el.countdownFormat === `ddhhmmss`) {
+        let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        days = days < 10 ? '0' + days : days;
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        this.setDigitContent(countdownDays, days);
+        this.setDigitContent(countdownHours, hours);
+        this.setDigitContent(countdownMinutes, minutes);
+        this.setDigitContent(countdownSeconds, seconds);
+      } else if (this.el.countdownFormat === `hhmmss`) {
+        let hours = Math.floor(distance / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        this.setDigitContent(countdownHours, hours);
+        this.setDigitContent(countdownMinutes, minutes);
+        this.setDigitContent(countdownSeconds, seconds);
+
+        this.hideCountdownUnit('days');
+      } else if (this.el.countdownFormat === `ddhh`) {
+        let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        days = days < 10 ? '0' + days : days;
+        hours = hours < 10 ? '0' + hours : hours;
+
+        this.setDigitContent(countdownDays, days);
+        this.setDigitContent(countdownHours, hours);
+
+        this.hideCountdownUnit('minutes');
+        this.hideCountdownUnit('seconds');
+      }
+
+      if (isNaN(distance) || distance < 0) {
+        distance = 0;
+      }
+
+      if (distance <= 0) {
+        this.setDigitContent(countdownDays, '00');
+        this.setDigitContent(countdownHours, '00');
+        this.setDigitContent(countdownMinutes, '00');
+        this.setDigitContent(countdownSeconds, '00');
+        this.stopCountdown();
+        this.el.setAttribute('data-loading-state', 'complete');
+        return false;
+      }
+
+      this.el.setAttribute('data-loading-state', 'complete');
+      return true;
     }
-  }
-  
-  
-  
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits,
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  
-  [data-wm-plugin="countdown-timer"] .divider {
-    width: var(--cd-divider-width);
-    background: var(--cd-divider-color);
-    opacity: var(--cd-divider-opacity);
-    margin-left: 7px;
-    margin-right: 7px;
+
+    scheduleNextTick() {
+      if (this._countdownTimeout) clearTimeout(this._countdownTimeout);
+      const delay = Math.max(50, 1000 - (this.getCurrentTime() % 1000));
+      this._countdownTimeout = setTimeout(() => {
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      }, delay);
+    }
+
+    updateCountdown() {
+      this.stopCountdown();
+      if (!this.tick()) return;
+      this.scheduleNextTick();
+    }
+
+    bindVisibilityChange() {
+      if (this._onVisibilityChange) return;
+
+      this._onVisibilityChange = () => {
+        if (document.hidden) {
+          this.stopCountdown();
+          return;
+        }
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      };
+
+      document.addEventListener('visibilitychange', this._onVisibilityChange);
+
+      this._onPageShow = () => {
+        if (document.hidden) return;
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      };
+
+      window.addEventListener('pageshow', this._onPageShow);
+    }
+
+    bindEvents() {
+      this.bindVisibilityChange();
+      this.addPluginLoadedListener();
+    }
+    addPluginLoadedListener() {
+      const handleLoaded = () => {
+        window.setTimeout(() => {
     
-    height: var(--cd-divider-height);
-    align-self: center;
-    display: var(--cd-divider-display);
-    position: var(--cd-divider-position);
-    align-items: center;
-    justify-content: center;
-  }
-  
-  
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-  }
-
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .divider {
-    flex-shrink: 0;
-    align-self: center;
-  }
-
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .countdown-section,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .countdown-section {
-    display: var(--cd-countdown-layout);
-    gap: 5px;
-  }
-  
-  
-  [data-wm-plugin="countdown-timer"]  .text {
-    align-self: center;
-  }
-  
-  /** Bubble Styling **/
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .digits {
-    background: var(--cd-bubble-background-color);
-    margin: var(--cd-digit-margin);
-    padding: var(--cd-digit-padding);
-    border-radius: var(--cd-bubble-border-radius);
-  }
-  
-  
-  /** Border Styling **/
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .countdown-section,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .countdown-section {
-    border: var(--cd-border-width) solid var(--cd-border-color);
-    border-radius: var(--cd-border-radius);
-    margin: var(--cd-section-gap) !important;
-  }
-  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text,
-  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text {
-    padding: 0 var(--cd-digit-padding) var(--cd-digit-padding);
-  }
-  
-  /** Colon Styling **/
-  div[data-wm-plugin="countdown-timer"] .divider .colon {
-    display: var(--cd-colon-display);
-    line-height: normal;
-    align-self: baseline;
-  }
-  
-  /** Announcement Bar **/
-  [data-wm-plugin="countdown-timer"].announcement-countdown,
-  .announcement-countdown[data-wm-plugin="countdown-timer"] {
-    --cd-divider-color: var(--announcement-bar-text-color);
-    --cd-divider-display: block;
-    --cd-divider-opacity: 0.2;
-    --cd-divider-height: calc(var(--cd-digit-desktop-font-size) * 0.45);
-    --cd-divider-width: 2px;
-    
-    --cd-countdown-layout: inline-flex;
-    --cd-bubble-background-color: none;
-    --cd-digit-color: var(--announcement-bar-text-color);
-    --cd-digit-padding: 0px;
-    --cd-digit-margin: 0px;
-    --cd-bubble-border-radius: 0px;
-    --cd-text-color: var(--announcement-bar-text-color);
-    --cd-border-width: 0px;
-    --cd-border-color: var(--tweak-text-block-background-color);
-    --cd-border-radius: 0px;
-    --cd-section-gap: 0px;
-  
-  }
-  
-  div.announcement-countdown {
-    font-size: var(--cd-announcement-mobile-font);
-    margin-left: var(--cd-announcement-margin-left);
-  }
-
-  /* Editor: hide duplicate announcement timers (JS also dedupes) */
-  .sqs-edit-mode-active .sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
-  .sqs-edit-mode-active .announcement-bar [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
-  .sqs-edit-mode-active #announcement-bar-text-inner-id [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
-  .sqs-edit-mode .sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
-  .sqs-edit-mode .announcement-bar [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"] {
-    display: none !important;
-  }
-  
-  @media only screen and (min-width: 767px) {
-    div.announcement-countdown {
-      font-size: var(--cd-announcement-desktop-font);
-  }
-    
-  }
-  
-  
-  
-  @media only screen and (max-width: 766px) {
-    div[data-wm-plugin="countdown-timer"] .divider .colon {
-      font-size: var(--cd-digit-mobile-font-size);
+        }, 1000)
+      }
+      document.addEventListener('wmCountdownTimer:loaded', handleLoaded)
+    }
+    resizeEvent(){
+      const throttleSetWidth = this.throttle(this.setWidth.bind(this), 250);
+      window.addEventListener('resize', throttleSetWidth);
+    }
+    throttle(func, limit) {
+      let lastFunc;
+      let lastRan;
+      return function() {
+        const context = this;
+        const args = arguments;
+        if (!lastRan) {
+          func.apply(context, args);
+          lastRan = Date.now();
+        } else {
+          clearTimeout(lastFunc);
+          lastFunc = setTimeout(function() {
+            if ((Date.now() - lastRan) >= limit) {
+              func.apply(context, args);
+              lastRan = Date.now();
+            }
+          }, limit - (Date.now() - lastRan));
+        }
+      };
     }
   }
   
-  @media only screen and (min-width: 767px) {
-    div[data-wm-plugin="countdown-timer"] .divider .colon {
-      font-size: var(--cd-digit-desktop-font-size);
+  (function () {
+  if (window.__wmCountdownTimerInit) return;
+  window.__wmCountdownTimerInit = true;
+
+  function deepMerge (...objs) {
+    function getType (obj) {
+      return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
     }
+    function mergeObj (clone, obj) {
+      for (let [key, value] of Object.entries(obj)) {
+        let type = getType(value);
+        if (clone[key] !== undefined && getType(clone[key]) === type && ['array', 'object'].includes(type)) {
+          clone[key] = deepMerge(clone[key], value);
+        } else {
+          clone[key] = structuredClone(value);
+        }
+      }
+    }
+    let clone = structuredClone(objs.shift());
+    for (let obj of objs) {
+      let type = getType(obj);
+      if (getType(clone) !== type) {
+        clone = structuredClone(obj);
+        continue;
+      }
+      if (type === 'array') {
+        clone = [...clone, ...structuredClone(obj)];
+      } else if (type === 'object') {
+        mergeObj(clone, obj);
+      } else {
+        clone = obj;
+      }
+    }
+  
+    return clone;
+  
+  }
+  const userSettings = window.wmCountdownTimerSettings ? window.wmCountdownTimerSettings : {};
+  const defaultSettings = {
+    date: new Date(Date.now()),
+    dayTag: 'Days', 
+    hourTag: 'Hours', 
+    minuteTag: 'Minutes', 
+    secondTag: 'Seconds', 
+    countdownFormat: 'ddhhmmss',
+    timezone: 'Local',
+    digitStyle: 'h4',
+    textStyle: 'h4',
+    displayStyle: 'default',
+  };
+  const mergedSettings = deepMerge({}, defaultSettings, userSettings);
+
+  function normalizeDisplayStyle(value) {
+    return String(value).replace(/['"]/g, '').trim().toLowerCase();
+  }
+
+  function resolveDisplayStyleFromCss(el) {
+    if (!el) return 'default';
+
+    if (el.dataset.cdDisplayStyle) {
+      return normalizeDisplayStyle(el.dataset.cdDisplayStyle);
+    }
+
+    let node = el;
+    while (node) {
+      const inline = node.style.getPropertyValue('--cd-display-style').trim();
+      if (normalizeDisplayStyle(inline) === 'flip') return 'flip';
+
+      if (node.isConnected || node === el) {
+        const computed = getComputedStyle(node).getPropertyValue('--cd-display-style').trim();
+        if (normalizeDisplayStyle(computed) === 'flip') return 'flip';
+      }
+
+      node = node.parentElement;
+    }
+
+    return 'default';
+  }
+
+  function resolveDisplayStyle(el) {
+    if (userSettings.displayStyle !== undefined) {
+      return normalizeDisplayStyle(userSettings.displayStyle);
+    }
+    return resolveDisplayStyleFromCss(el);
+  }
+
+  function createFlipCard(initialValue = '0') {
+    return `
+      <span class="wm-flip" data-value="${initialValue}">
+        <span class="wm-flip-card">
+          <span class="wm-flip-panel wm-flip-panel-top">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-bottom">
+            <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+          </span>
+          <span class="wm-flip-panel wm-flip-panel-flip">
+            <span class="wm-flip-face wm-flip-face-front">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+            <span class="wm-flip-face wm-flip-face-back">
+              <span class="wm-flip-panel-text"><span class="wm-flip-digit">${initialValue}</span></span>
+            </span>
+          </span>
+        </span>
+      </span>`;
+  }
+
+  function buildFlipDigits() {
+    return createFlipCard('0') + createFlipCard('0');
+  }
+
+  function buildDigitsHtml(unitClass, settings) {
+    if (settings.displayStyle === 'flip') {
+      return `<div class="digits flip-digits ${unitClass}">${buildFlipDigits()}</div>`;
+    }
+    return `<div class="digits"><${settings.digitStyle} class="${unitClass} digit">00</${settings.digitStyle}></div>`;
   }
   
-  div[data-wm-plugin="countdown-timer"][data-loading-state ="loading"] {
-    opacity: 0;
+  function buildHTML(el, data) {
+    el.wmCountdownTimer?.stopCountdown();
+
+    const settings = deepMerge({}, mergedSettings, {
+      displayStyle: resolveDisplayStyle(el),
+    });
+
+    el.countdownDate = settings.date;
+    el.countdownFormat = settings.countdownFormat;
+    el.timezone = settings.timezone;
+    el.displayStyle = settings.displayStyle;
+    el.dataset.displayStyle = settings.displayStyle;
+
+    const isFlip = settings.displayStyle === 'flip';
+    const flipClass = isFlip ? ' display-flip' : '';
+    el.classList.toggle('display-flip', isFlip);
+
+    el.innerHTML = `
+      <div class="wm-countdown${flipClass}" data-cd-style="${settings.displayStyle}">
+        <div class="days countdown-section tick-group">
+          ${buildDigitsHtml('day-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.dayTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider day-divider"><span class="colon">:</span></div>
+         
+        <div class="hours countdown-section tick-group">
+          ${buildDigitsHtml('hour-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.hourTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider hour-divider"><span class="colon">:</span></div>
+      
+        <div class="minutes countdown-section tick-group">
+          ${buildDigitsHtml('minute-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.minuteTag}</${settings.textStyle}></div>
+        </div>
+
+        <div class="divider minute-divider"><span class="colon">:</span></div>
+      
+        <div class="seconds countdown-section tick-group">
+          ${buildDigitsHtml('second-digit', settings)}
+          <div class="text"><${settings.textStyle}>${settings.secondTag}</${settings.textStyle}></div>
+        </div>
+      
+      </div>
+         `;
+    
+    el.wmCountdownTimer = new WMCountdownTimer(el);
   }
   
-  div[data-wm-plugin="countdown-timer"][data-loading-state ="complete"] {
-    opacity: 1;
+  function replaceAnchor(instance) {
+    const href = instance.getAttribute('href');
+    const divElement = document.createElement('div');
+    divElement.setAttribute('data-wm-plugin', 'countdown-timer');
+    divElement.classList.add('link');
+    divElement.setAttribute('data-href', href);
+    instance.parentNode.replaceChild(divElement, instance);
+    buildHTML(divElement);
   }
   
-  .sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"] {
-    color: transparent;
-    background: transparent;
-    font-size: 0;
-    position: absolute;
-    line-height: 0;
-    width: 100%;
-    height: 25px;
-    border: 1px dashed var(--headingLargeColor);
-  }
-  
-  /*Error Message*/
-  .show-in-editor {
-    display:none;
-  }
-  .sqs-edit-mode .show-in-editor {
-    display: block;
-  }
-  
-  .sqs-edit-mode-active .code-block [data-wm-plugin="countdown-timer"]::after {
-    content: 'Countdown Timer';
-    color: var(--headingLargeColor);
-    font-size: 12px;
-    position: absolute;
-    top: 50%;
-    transform:translateX(25%);
-  }
-
-  /* =========
-    Flip / Split-Flap Display Style
-  ========== */
-
-  [data-wm-plugin="countdown-timer"].display-flip,
-  [data-wm-plugin="countdown-timer"] .display-flip,
-  [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
-    white-space: nowrap;
-  }
-
-  [data-wm-plugin="countdown-timer"].display-flip .text > *,
-  [data-wm-plugin="countdown-timer"] .display-flip .text > * {
-    font-size: var(--cd-flip-label-font-size);
-    color: var(--cd-flip-label-color);
-    margin: 0;
-  }
-
-  [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
-    display: inline-flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: flex-start;
-    gap: var(--cd-flip-gap);
-  }
-
-  [data-wm-plugin="countdown-timer"].display-flip .countdown-section,
-  [data-wm-plugin="countdown-timer"] .display-flip .countdown-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 !important;
-    text-align: center;
-    gap: 5px;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .flip-digits {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--cd-flip-digit-gap);
-    font-size: var(--cd-flip-font-size);
-    background: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  [data-wm-plugin="countdown-timer"].display-flip .divider,
-  [data-wm-plugin="countdown-timer"] .display-flip .divider {
-    display: none;
-  }
-
-  [data-wm-plugin="countdown-timer"].display-flip .countdown-section,
-  [data-wm-plugin="countdown-timer"] .display-flip .countdown-section {
-    border: none;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip {
-    display: inline-block;
-    position: relative;
-    width: var(--cd-flip-char-width);
-    height: calc(var(--cd-flip-line-height) * 1em);
-    perspective: 600px;
-    font-weight: bold;
-    border-radius: var(--cd-flip-border-radius);
-    overflow: visible;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-card {
-    display: block;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: inherit;
-    transform-style: preserve-3d;
-    box-shadow: var(--cd-flip-shadow);
-    overflow: visible;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 50%;
-    overflow: hidden;
-    background: var(--cd-flip-panel-bg);
-    color: var(--cd-flip-panel-color);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-top {
-    top: 0;
-    z-index: 1;
-    transform: translateZ(0);
-    transform-origin: 50% 100%;
-    border-radius: var(--cd-flip-border-radius) var(--cd-flip-border-radius) 0 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom {
-    top: 50%;
-    bottom: auto;
-    z-index: 0;
-    transform: translateZ(0);
-    transform-origin: 50% 0%;
-    border-radius: 0 0 var(--cd-flip-border-radius) var(--cd-flip-border-radius);
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    border-radius: inherit;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, #000 8%, transparent) 0%,
-      transparent 50%
+  function isInAnnouncementBar(el) {
+    return !!(
+      el.closest('.sqs-announcement-bar-dropzone') ||
+      el.closest('#announcement-bar-text-inner-id') ||
+      el.closest('.announcement-bar') ||
+      el.classList.contains('announcement-countdown')
     );
-    pointer-events: none;
   }
 
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-flip {
-    top: 0;
-    height: 50%;
-    z-index: 2;
-    transform-origin: 50% 100%;
-    transform: rotateX(0deg) translateZ(1px);
-    transform-style: preserve-3d;
-    overflow: visible;
-    backface-visibility: visible;
-    -webkit-backface-visibility: visible;
-    border-radius: var(--cd-flip-border-radius) var(--cd-flip-border-radius) 0 0;
-    will-change: transform;
-    visibility: hidden;
-    pointer-events: none;
-  }
+  function initCountdownTimers() {
+    const countdownFromCode = document.querySelectorAll('[data-wm-plugin="countdown-timer"]:not([data-cd-built])');
 
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    background: var(--cd-flip-panel-bg);
-    color: var(--cd-flip-panel-color);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    border-radius: inherit;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-front {
-    transform: rotateX(0deg);
-    border-bottom: 1px solid color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-back {
-    transform: rotateX(180deg);
-    border-radius: 0 0 var(--cd-flip-border-radius) var(--cd-flip-border-radius);
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-back .wm-flip-panel-text {
-    top: auto;
-    bottom: 0;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip.flipping .wm-flip-panel-flip::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.2) 100%);
-    pointer-events: none;
-    border-radius: inherit;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-text {
-    display: block;
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 200%;
-    line-height: var(--cd-flip-line-height);
-    text-align: center;
-    font-size: 1em;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-top .wm-flip-panel-text,
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-front .wm-flip-panel-text {
-    top: 0;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom .wm-flip-panel-text {
-    bottom: 0;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-digit {
-    display: block;
-    width: 100%;
-    text-align: center;
-  }
-
-  [data-wm-plugin="countdown-timer"] .display-flip .wm-flip.flipping .wm-flip-panel-flip {
-    visibility: visible;
-    animation: wm-countdown-flip-down var(--cd-flip-duration) cubic-bezier(0.33, 0.85, 0.45, 1) forwards;
-  }
-
-  @keyframes wm-countdown-flip-down {
-    0% {
-      transform: rotateX(0deg) translateZ(1px);
+    for (let el of countdownFromCode) {
+      if (isInAnnouncementBar(el)) continue;
+      if (el.parentElement && el.parentElement.closest('[data-wm-plugin="countdown-timer"]')) continue;
+      buildHTML(el);
+      el.setAttribute('data-cd-built', '');
     }
-    85% {
-      transform: rotateX(-180deg) translateZ(0);
-    }
-    100% {
-      transform: rotateX(-180deg) translateZ(0);
+
+    const countdownFromLink = document.querySelectorAll('a[href*="#wm-countdown"], a[href*="#wm-countdown"]');
+    for (let el of countdownFromLink) {
+      replaceAnchor(el);
+      el.classList.add('link');
     }
   }
 
-  @media only screen and (max-width: 766px) {
-    [data-wm-plugin="countdown-timer"] .display-flip .flip-digits {
-      font-size: var(--cd-flip-mobile-font-size);
-    }
+  /** Announcement Bar **/
+  const SHORTCODE_PATTERN = /\[countdown-timer\]/gi;
 
-    [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
-      gap: var(--cd-flip-mobile-gap);
-    }
+  const isEditMode = () =>
+    document.body.classList.contains('sqs-edit-mode-active') ||
+    document.body.classList.contains('sqs-edit-mode');
 
-    [data-wm-plugin="countdown-timer"].display-flip .text > *,
-    [data-wm-plugin="countdown-timer"] .display-flip .text > * {
-      font-size: var(--cd-flip-label-mobile-font-size);
-    }
-
+  function getSitePreviewFrame() {
+    return document.querySelector(
+      'iframe#sqs-site-frame, iframe.sqs-site-frame, iframe[name="sqs-site-frame"], iframe[src*="squarespace"]'
+    );
   }
+
+  function shouldInitAnnouncementBar() {
+    if (!isEditMode()) return true;
+    // Custom code runs in the editor chrome and the site preview iframe.
+    if (window.self !== window.top) return true;
+    // Top window: skip when a preview iframe exists (iframe will init the bar).
+    return !getSitePreviewFrame();
+  }
+
+  function isAnnouncementVisible(el) {
+    if (!el?.isConnected) return false;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+      return false;
+    }
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function getAnnouncementRoots() {
+    const roots = new Set();
+    document.querySelectorAll('.sqs-announcement-bar-dropzone, .announcement-bar').forEach((el) => roots.add(el));
+    if (!roots.size) {
+      document.querySelectorAll('#announcement-bar-text-inner-id').forEach((inner) => {
+        const root = inner.closest('.sqs-announcement-bar-dropzone, .announcement-bar') || inner.parentElement;
+        if (root) roots.add(root);
+      });
+    }
+    return [...roots];
+  }
+
+  function stripCountdownShortcodes(container) {
+    if (!container) return;
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach((node) => {
+      if (SHORTCODE_PATTERN.test(node.textContent)) {
+        node.textContent = node.textContent.replace(SHORTCODE_PATTERN, '');
+      }
+    });
+    SHORTCODE_PATTERN.lastIndex = 0;
+  }
+
+  function removeExtraAnnouncementTimers(scope) {
+    const timers = [...scope.querySelectorAll('[data-wm-plugin="countdown-timer"]')];
+    timers.slice(1).forEach((timer) => timer.remove());
+    return timers[0] || null;
+  }
+
+  function initAnnouncementRoot(root) {
+    if (!root) return;
+
+    const abInner = root.querySelector('#announcement-bar-text-inner-id') || root;
+    const hadShortcode = SHORTCODE_PATTERN.test(root.textContent || '');
+    const hadTimer = !!root.querySelector('[data-wm-plugin="countdown-timer"]');
+    if (!hadShortcode && !hadTimer) return;
+
+    stripCountdownShortcodes(abInner);
+
+    let timer = removeExtraAnnouncementTimers(root);
+
+    if (!timer && hadShortcode) {
+      timer = document.createElement('div');
+      timer.setAttribute('data-wm-plugin', 'countdown-timer');
+      timer.className = 'announcement-countdown';
+      abInner.appendChild(timer);
+    }
+
+    if (!timer) return;
+
+    if (!abInner.contains(timer)) {
+      abInner.appendChild(timer);
+    }
+
+    if (!timer.hasAttribute('data-cd-built')) {
+      buildHTML(timer);
+      timer.setAttribute('data-cd-built', '');
+    }
+  }
+
+  function dedupeEditorAnnouncementTimers() {
+    if (!isEditMode()) return;
+
+    const timers = [
+      ...document.querySelectorAll(
+        '.sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"], .announcement-bar [data-wm-plugin="countdown-timer"]'
+      ),
+    ];
+    if (timers.length < 2) return;
+
+    const keep =
+      timers.find((timer) => isAnnouncementVisible(timer.closest('.sqs-announcement-bar-dropzone, .announcement-bar'))) ||
+      timers[0];
+
+    timers.forEach((timer) => {
+      if (timer !== keep) timer.remove();
+    });
+  }
+
+  let announcementInitRunning = false;
+  function initAnnouncementBar() {
+    if (!shouldInitAnnouncementBar()) return;
+    if (announcementInitRunning) return;
+    announcementInitRunning = true;
+
+    try {
+      let roots = getAnnouncementRoots().filter(isAnnouncementVisible);
+      if (!roots.length) {
+        roots = getAnnouncementRoots();
+      }
+      if (isEditMode() && roots.length > 1) {
+        roots = [roots[0]];
+      }
+      roots.forEach(initAnnouncementRoot);
+      dedupeEditorAnnouncementTimers();
+    } finally {
+      announcementInitRunning = false;
+    }
+  }
+
+  function runInit() {
+    initAnnouncementBar();
+    initCountdownTimers();
+  }
+
+  function scheduleInit() {
+    const run = () => requestAnimationFrame(runInit);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+  }
+
+  const aBDropzone = document.querySelector('.sqs-announcement-bar-dropzone');
+  const announcementObserver = new MutationObserver((mutations) => {
+    const hasNewNodes = mutations.some((mutation) => mutation.addedNodes.length > 0);
+    if (!hasNewNodes) return;
+    initAnnouncementBar();
+    announcementObserver.disconnect();
+  });
+
+  if (aBDropzone) {
+    announcementObserver.observe(aBDropzone, {
+      subtree: false,
+      childList: true,
+    });
+    initAnnouncementBar();
+  }
+
+  scheduleInit();
+  })();
+
