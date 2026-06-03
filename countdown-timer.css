@@ -37,6 +37,22 @@
   
     --cd-text-color: inherit;
 
+    --cd-flip-border-radius: 0px;
+    --cd-flip-panel-bg: var(--headingExtraLargeColor);
+    --cd-flip-panel-color: var(--siteBackgroundColor);
+    --cd-flip-label-color: inherit;
+    --cd-flip-font-size: 4.5em;
+    --cd-flip-mobile-font-size: 2.7em;
+    --cd-flip-label-font-size: 1em;
+    --cd-flip-label-mobile-font-size: 1em;
+    --cd-flip-char-width: 1.2em;
+    --cd-flip-line-height: 1.45;
+    --cd-flip-duration: 0.7s;
+    --cd-flip-gap: 0.75em;
+    --cd-flip-mobile-gap: 0.5em;
+    --cd-flip-digit-gap: 0.1em;
+    --cd-flip-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+
     /* Set --cd-display-style: flip; for split-flap (JS reads this; do not set "default" here) */
 
     display: flex;
@@ -52,7 +68,8 @@
     margin: 0px;
   }
   
-  [data-wm-plugin="countdown-timer"] .text > * {
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
     font-size: var(--cd-text-desktop-font-size);
     margin: 0px;
     color: var(--cd-text-color);
@@ -68,7 +85,8 @@
       font-size: var(--cd-digit-mobile-font-size);
     }
 
-    [data-wm-plugin="countdown-timer"] .text > * {
+    [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
+    [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
       font-size: var(--cd-text-mobile-font-size);
     }
   }
@@ -77,7 +95,8 @@
   
   [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits,
   [data-wm-plugin="countdown-timer"]:not(.display-flip) .digits > *,
-  [data-wm-plugin="countdown-timer"] .text > * {
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text > *,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text > * {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -140,7 +159,8 @@
     border-radius: var(--cd-border-radius);
     margin: var(--cd-section-gap) !important;
   }
-  [data-wm-plugin="countdown-timer"] .text {
+  [data-wm-plugin="countdown-timer"]:not(.display-flip) .text,
+  [data-wm-plugin="countdown-timer"] .wm-countdown:not(.display-flip) .text {
     padding: 0 var(--cd-digit-padding) var(--cd-digit-padding);
   }
   
@@ -177,6 +197,15 @@
   div.announcement-countdown {
     font-size: var(--cd-announcement-mobile-font);
     margin-left: var(--cd-announcement-margin-left);
+  }
+
+  /* Editor: hide duplicate announcement timers (JS also dedupes) */
+  .sqs-edit-mode-active .sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
+  .sqs-edit-mode-active .announcement-bar [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
+  .sqs-edit-mode-active #announcement-bar-text-inner-id [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
+  .sqs-edit-mode .sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"],
+  .sqs-edit-mode .announcement-bar [data-wm-plugin="countdown-timer"] ~ [data-wm-plugin="countdown-timer"] {
+    display: none !important;
   }
   
   @media only screen and (min-width: 767px) {
@@ -240,25 +269,17 @@
     Flip / Split-Flap Display Style
   ========== */
 
+  [data-wm-plugin="countdown-timer"].display-flip,
   [data-wm-plugin="countdown-timer"] .display-flip,
   [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
-    --cd-flip-panel-bg: var(--headingExtraLargeColor);
-    --cd-flip-panel-color: var(--siteBackgroundColor);
-    --cd-flip-font-size: 4.5em;
-    --cd-flip-char-width: 1.2em;
-    --cd-flip-line-height: 1.45;
-    --cd-flip-duration: 0.7s;
-    --cd-flip-gap: 0.75em;
-    --cd-flip-digit-gap: 0.1em;
-    --cd-flip-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-    --cd-flip-hinge-color: color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
-    --cd-flip-bottom-shadow: linear-gradient(
-      180deg,
-      color-mix(in srgb, #000 8%, transparent) 0%,
-      transparent 50%
-    );
-
     white-space: nowrap;
+  }
+
+  [data-wm-plugin="countdown-timer"].display-flip .text > *,
+  [data-wm-plugin="countdown-timer"] .display-flip .text > * {
+    font-size: var(--cd-flip-label-font-size);
+    color: var(--cd-flip-label-color);
+    margin: 0;
   }
 
   [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
@@ -340,7 +361,7 @@
     transform: translateZ(0);
     transform-origin: 50% 100%;
     border-radius: var(--cd-flip-border-radius) var(--cd-flip-border-radius) 0 0;
-    border-bottom: 1px solid var(--cd-flip-hinge-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
   }
 
   [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-panel-bottom {
@@ -358,7 +379,11 @@
     inset: 0;
     z-index: 1;
     border-radius: inherit;
-    background: var(--cd-flip-bottom-shadow);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, #000 8%, transparent) 0%,
+      transparent 50%
+    );
     pointer-events: none;
   }
 
@@ -391,7 +416,7 @@
 
   [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-front {
     transform: rotateX(0deg);
-    border-bottom: 1px solid var(--cd-flip-hinge-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--cd-flip-panel-color) 11%, transparent);
   }
 
   [data-wm-plugin="countdown-timer"] .display-flip .wm-flip-face-back {
@@ -457,10 +482,17 @@
   }
 
   @media only screen and (max-width: 766px) {
-    [data-wm-plugin="countdown-timer"] .display-flip,
+    [data-wm-plugin="countdown-timer"] .display-flip .flip-digits {
+      font-size: var(--cd-flip-mobile-font-size);
+    }
+
     [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
-      --cd-flip-font-size: 2.7em;
-      --cd-flip-gap: 0.5em;
+      gap: var(--cd-flip-mobile-gap);
+    }
+
+    [data-wm-plugin="countdown-timer"].display-flip .text > *,
+    [data-wm-plugin="countdown-timer"] .display-flip .text > * {
+      font-size: var(--cd-flip-label-mobile-font-size);
     }
 
   }
