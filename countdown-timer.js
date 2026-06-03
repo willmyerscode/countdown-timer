@@ -206,96 +206,133 @@ class WMCountdownTimer {
       }
     }
   
-    updateCountdown(){
-      const countdown = setInterval(() =>  {
-    
-      let currentTime;
+    getCurrentTime() {
       if (this.timezone === 'Local') {
-          currentTime = new Date().getTime();
-      } else {
-          currentTime = new Date(new Date().toLocaleString('en-US', { timeZone: this.timezone })).getTime();
+        return Date.now();
       }
-      
-      let distance = this.countdownDate.getTime() - currentTime;
-    
-      let countdownDays = this.getDigitElement('days');
-      let countdownHours = this.getDigitElement('hours');
-      let countdownMinutes = this.getDigitElement('minutes');
-      let countdownSeconds = this.getDigitElement('seconds');
-    
+      return new Date(new Date().toLocaleString('en-US', { timeZone: this.timezone })).getTime();
+    }
+
+    stopCountdown() {
+      if (this._countdownInterval) {
+        clearInterval(this._countdownInterval);
+        this._countdownInterval = null;
+      }
+      if (this._countdownTimeout) {
+        clearTimeout(this._countdownTimeout);
+        this._countdownTimeout = null;
+      }
+    }
+
+    tick() {
+      let distance = this.countdownDate.getTime() - this.getCurrentTime();
+
+      const countdownDays = this.getDigitElement('days');
+      const countdownHours = this.getDigitElement('hours');
+      const countdownMinutes = this.getDigitElement('minutes');
+      const countdownSeconds = this.getDigitElement('seconds');
+
       if (this.el.countdownFormat === `ddhhmmss`) {
-        
-      let days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-    
-      days = days < 10 ? '0' + days : days;
-      hours = hours < 10 ? '0' + hours : hours;
-      minutes = minutes < 10 ? '0' + minutes : minutes;
-      seconds = seconds < 10 ? '0' + seconds : seconds;
-    
-      this.setDigitContent(countdownDays, days);
-      this.setDigitContent(countdownHours, hours);
-      this.setDigitContent(countdownMinutes, minutes);
-      this.setDigitContent(countdownSeconds, seconds);
-        
-    }
-      
-    else if (this.el.countdownFormat === `hhmmss`) {
-      
-      let hours = Math.floor(distance / (1000 * 60 * 60));
-      let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-  
-      hours = hours < 10 ? '0' + hours : hours;
-      minutes = minutes < 10 ? '0' + minutes : minutes;
-      seconds = seconds < 10 ? '0' + seconds : seconds;
-  
-      this.setDigitContent(countdownHours, hours);
-      this.setDigitContent(countdownMinutes, minutes);
-      this.setDigitContent(countdownSeconds, seconds);
-  
-      this.hideCountdownUnit('days');
-      
-    }
-  
-    else if (this.el.countdownFormat === `ddhh`) {
-      
-      let days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  
-      days = days < 10 ? '0' + days : days;
-      hours = hours < 10 ? '0' + hours : hours;
-      
-      this.setDigitContent(countdownDays, days);
-      this.setDigitContent(countdownHours, hours);
-  
-      this.hideCountdownUnit('minutes');
-      this.hideCountdownUnit('seconds');
-      
+        let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        days = days < 10 ? '0' + days : days;
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        this.setDigitContent(countdownDays, days);
+        this.setDigitContent(countdownHours, hours);
+        this.setDigitContent(countdownMinutes, minutes);
+        this.setDigitContent(countdownSeconds, seconds);
+      } else if (this.el.countdownFormat === `hhmmss`) {
+        let hours = Math.floor(distance / (1000 * 60 * 60));
+        let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        this.setDigitContent(countdownHours, hours);
+        this.setDigitContent(countdownMinutes, minutes);
+        this.setDigitContent(countdownSeconds, seconds);
+
+        this.hideCountdownUnit('days');
+      } else if (this.el.countdownFormat === `ddhh`) {
+        let days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        days = days < 10 ? '0' + days : days;
+        hours = hours < 10 ? '0' + hours : hours;
+
+        this.setDigitContent(countdownDays, days);
+        this.setDigitContent(countdownHours, hours);
+
+        this.hideCountdownUnit('minutes');
+        this.hideCountdownUnit('seconds');
       }
 
-      
-    if (isNaN(distance) || distance < 0) {
-      distance = 0;
-    }
-  
+      if (isNaN(distance) || distance < 0) {
+        distance = 0;
+      }
+
       if (distance <= 0) {
-      this.setDigitContent(countdownDays, '00');
-      this.setDigitContent(countdownHours, '00');
-      this.setDigitContent(countdownMinutes, '00');
-      this.setDigitContent(countdownSeconds, '00');
-      clearInterval(countdown);
+        this.setDigitContent(countdownDays, '00');
+        this.setDigitContent(countdownHours, '00');
+        this.setDigitContent(countdownMinutes, '00');
+        this.setDigitContent(countdownSeconds, '00');
+        this.stopCountdown();
+        this.el.setAttribute('data-loading-state', 'complete');
+        return false;
+      }
+
       this.el.setAttribute('data-loading-state', 'complete');
-      return;
+      return true;
     }
-      
-      this.el.setAttribute('data-loading-state', 'complete');
-    }, 1000);
-  }
-  
+
+    scheduleNextTick() {
+      if (this._countdownTimeout) clearTimeout(this._countdownTimeout);
+      const delay = Math.max(50, 1000 - (this.getCurrentTime() % 1000));
+      this._countdownTimeout = setTimeout(() => {
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      }, delay);
+    }
+
+    updateCountdown() {
+      this.stopCountdown();
+      if (!this.tick()) return;
+      this.scheduleNextTick();
+    }
+
+    bindVisibilityChange() {
+      if (this._onVisibilityChange) return;
+
+      this._onVisibilityChange = () => {
+        if (document.hidden) {
+          this.stopCountdown();
+          return;
+        }
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      };
+
+      document.addEventListener('visibilitychange', this._onVisibilityChange);
+
+      this._onPageShow = () => {
+        if (document.hidden) return;
+        if (!this.tick()) return;
+        this.scheduleNextTick();
+      };
+
+      window.addEventListener('pageshow', this._onPageShow);
+    }
+
     bindEvents() {
+      this.bindVisibilityChange();
       this.addPluginLoadedListener();
     }
     addPluginLoadedListener() {
@@ -333,7 +370,9 @@ class WMCountdownTimer {
   }
   
   (function () {
-  
+  if (window.__wmCountdownTimerInit) return;
+  window.__wmCountdownTimerInit = true;
+
   function deepMerge (...objs) {
     function getType (obj) {
       return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase();
@@ -450,6 +489,8 @@ class WMCountdownTimer {
   }
   
   function buildHTML(el, data) {
+    el.wmCountdownTimer?.stopCountdown();
+
     const settings = deepMerge({}, mergedSettings, {
       displayStyle: resolveDisplayStyle(el),
     });
@@ -508,11 +549,20 @@ class WMCountdownTimer {
     buildHTML(divElement);
   }
   
+  function isInAnnouncementBar(el) {
+    return !!(
+      el.closest('.sqs-announcement-bar-dropzone') ||
+      el.closest('#announcement-bar-text-inner-id') ||
+      el.closest('.announcement-bar') ||
+      el.classList.contains('announcement-countdown')
+    );
+  }
+
   function initCountdownTimers() {
     const countdownFromCode = document.querySelectorAll('[data-wm-plugin="countdown-timer"]:not([data-cd-built])');
 
     for (let el of countdownFromCode) {
-      if (el.closest('.sqs-announcement-bar-dropzone')) continue;
+      if (isInAnnouncementBar(el)) continue;
       if (el.parentElement && el.parentElement.closest('[data-wm-plugin="countdown-timer"]')) continue;
       buildHTML(el);
       el.setAttribute('data-cd-built', '');
@@ -526,41 +576,136 @@ class WMCountdownTimer {
   }
 
   /** Announcement Bar **/
-  const aBDropzone = document.querySelector('.sqs-announcement-bar-dropzone');
-  let announcementBarHandled = false;
+  const SHORTCODE_PATTERN = /\[countdown-timer\]/gi;
 
-  function initAnnouncementBar() {
-    if (!aBDropzone || announcementBarHandled) return;
+  const isEditMode = () =>
+    document.body.classList.contains('sqs-edit-mode-active') ||
+    document.body.classList.contains('sqs-edit-mode');
 
-    const abInner = aBDropzone.querySelector('#announcement-bar-text-inner-id');
-    if (!abInner) return;
+  function getSitePreviewFrame() {
+    return document.querySelector(
+      'iframe#sqs-site-frame, iframe.sqs-site-frame, iframe[name="sqs-site-frame"], iframe[src*="squarespace"]'
+    );
+  }
 
-    const hasShortcode = /\[countdown-timer\]/.test(abInner.innerHTML);
-    const timers = abInner.querySelectorAll('[data-wm-plugin="countdown-timer"]');
+  function shouldInitAnnouncementBar() {
+    if (!isEditMode()) return true;
+    // Custom code runs in the editor chrome and the site preview iframe.
+    if (window.self !== window.top) return true;
+    // Top window: skip when a preview iframe exists (iframe will init the bar).
+    return !getSitePreviewFrame();
+  }
 
-    timers.forEach((timer, index) => {
-      if (index > 0) timer.remove();
-    });
+  function isAnnouncementVisible(el) {
+    if (!el?.isConnected) return false;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+      return false;
+    }
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
 
-    let timer = abInner.querySelector('[data-wm-plugin="countdown-timer"]');
+  function getAnnouncementRoots() {
+    const roots = new Set();
+    document.querySelectorAll('.sqs-announcement-bar-dropzone, .announcement-bar').forEach((el) => roots.add(el));
+    if (!roots.size) {
+      document.querySelectorAll('#announcement-bar-text-inner-id').forEach((inner) => {
+        const root = inner.closest('.sqs-announcement-bar-dropzone, .announcement-bar') || inner.parentElement;
+        if (root) roots.add(root);
+      });
+    }
+    return [...roots];
+  }
 
-    if (hasShortcode) {
-      abInner.innerHTML = abInner.innerHTML.replace(/\[countdown-timer\]/g, '');
-      if (!timer) {
-        timer = document.createElement('div');
-        timer.setAttribute('data-wm-plugin', 'countdown-timer');
-        timer.className = 'announcement-countdown';
-        abInner.appendChild(timer);
+  function stripCountdownShortcodes(container) {
+    if (!container) return;
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach((node) => {
+      if (SHORTCODE_PATTERN.test(node.textContent)) {
+        node.textContent = node.textContent.replace(SHORTCODE_PATTERN, '');
       }
+    });
+    SHORTCODE_PATTERN.lastIndex = 0;
+  }
+
+  function removeExtraAnnouncementTimers(scope) {
+    const timers = [...scope.querySelectorAll('[data-wm-plugin="countdown-timer"]')];
+    timers.slice(1).forEach((timer) => timer.remove());
+    return timers[0] || null;
+  }
+
+  function initAnnouncementRoot(root) {
+    if (!root) return;
+
+    const abInner = root.querySelector('#announcement-bar-text-inner-id') || root;
+    const hadShortcode = SHORTCODE_PATTERN.test(root.textContent || '');
+    const hadTimer = !!root.querySelector('[data-wm-plugin="countdown-timer"]');
+    if (!hadShortcode && !hadTimer) return;
+
+    stripCountdownShortcodes(abInner);
+
+    let timer = removeExtraAnnouncementTimers(root);
+
+    if (!timer && hadShortcode) {
+      timer = document.createElement('div');
+      timer.setAttribute('data-wm-plugin', 'countdown-timer');
+      timer.className = 'announcement-countdown';
+      abInner.appendChild(timer);
     }
 
     if (!timer) return;
 
-    announcementBarHandled = true;
+    if (!abInner.contains(timer)) {
+      abInner.appendChild(timer);
+    }
 
     if (!timer.hasAttribute('data-cd-built')) {
       buildHTML(timer);
       timer.setAttribute('data-cd-built', '');
+    }
+  }
+
+  function dedupeEditorAnnouncementTimers() {
+    if (!isEditMode()) return;
+
+    const timers = [
+      ...document.querySelectorAll(
+        '.sqs-announcement-bar-dropzone [data-wm-plugin="countdown-timer"], .announcement-bar [data-wm-plugin="countdown-timer"]'
+      ),
+    ];
+    if (timers.length < 2) return;
+
+    const keep =
+      timers.find((timer) => isAnnouncementVisible(timer.closest('.sqs-announcement-bar-dropzone, .announcement-bar'))) ||
+      timers[0];
+
+    timers.forEach((timer) => {
+      if (timer !== keep) timer.remove();
+    });
+  }
+
+  let announcementInitRunning = false;
+  function initAnnouncementBar() {
+    if (!shouldInitAnnouncementBar()) return;
+    if (announcementInitRunning) return;
+    announcementInitRunning = true;
+
+    try {
+      let roots = getAnnouncementRoots().filter(isAnnouncementVisible);
+      if (!roots.length) {
+        roots = getAnnouncementRoots();
+      }
+      if (isEditMode() && roots.length > 1) {
+        roots = [roots[0]];
+      }
+      roots.forEach(initAnnouncementRoot);
+      dedupeEditorAnnouncementTimers();
+    } finally {
+      announcementInitRunning = false;
     }
   }
 
@@ -578,21 +723,18 @@ class WMCountdownTimer {
     }
   }
 
-  const observer = new MutationObserver(function(mutations_list) {
-    for (const mutation of mutations_list) {
-      if (mutation.addedNodes.length !== 0) {
-        initAnnouncementBar();
-        observer.disconnect();
-        break;
-      }
-    }
+  const aBDropzone = document.querySelector('.sqs-announcement-bar-dropzone');
+  const announcementObserver = new MutationObserver((mutations) => {
+    const hasNewNodes = mutations.some((mutation) => mutation.addedNodes.length > 0);
+    if (!hasNewNodes) return;
+    initAnnouncementBar();
+    announcementObserver.disconnect();
   });
 
   if (aBDropzone) {
-    observer.observe(aBDropzone, {
+    announcementObserver.observe(aBDropzone, {
       subtree: false,
       childList: true,
-      attributes: false
     });
     initAnnouncementBar();
   }
