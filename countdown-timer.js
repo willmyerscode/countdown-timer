@@ -741,4 +741,3 @@ class WMCountdownTimer {
 
   scheduleInit();
   })();
-
