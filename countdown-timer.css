@@ -41,10 +41,6 @@
     --cd-flip-panel-bg: var(--headingExtraLargeColor);
     --cd-flip-panel-color: var(--siteBackgroundColor);
     --cd-flip-label-color: inherit;
-    --cd-flip-font-size: 4.5em;
-    --cd-flip-mobile-font-size: 2.7em;
-    --cd-flip-label-font-size: 1em;
-    --cd-flip-label-mobile-font-size: 1em;
     --cd-flip-char-width: 1.2em;
     --cd-flip-line-height: 1.45;
     --cd-flip-duration: 0.7s;
@@ -277,7 +273,7 @@
 
   [data-wm-plugin="countdown-timer"].display-flip .text > *,
   [data-wm-plugin="countdown-timer"] .display-flip .text > * {
-    font-size: var(--cd-flip-label-font-size);
+    font-size: var(--cd-text-desktop-font-size);
     color: var(--cd-flip-label-color);
     margin: 0;
   }
@@ -305,7 +301,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--cd-flip-digit-gap);
-    font-size: var(--cd-flip-font-size);
+    font-size: var(--cd-digit-desktop-font-size);
     background: none;
     padding: 0;
     margin: 0;
@@ -483,7 +479,7 @@
 
   @media only screen and (max-width: 766px) {
     [data-wm-plugin="countdown-timer"] .display-flip .flip-digits {
-      font-size: var(--cd-flip-mobile-font-size);
+      font-size: var(--cd-digit-mobile-font-size);
     }
 
     [data-wm-plugin="countdown-timer"] .wm-countdown.display-flip {
@@ -492,7 +488,7 @@
 
     [data-wm-plugin="countdown-timer"].display-flip .text > *,
     [data-wm-plugin="countdown-timer"] .display-flip .text > * {
-      font-size: var(--cd-flip-label-mobile-font-size);
+      font-size: var(--cd-text-mobile-font-size);
     }
 
   }
