@@ -162,6 +162,14 @@ class WMCountdownTimer {
       return this.el.querySelector(`.wm-countdown .${unit} .digits .${digitClass}`);
     }
 
+    setUnitLabel(unit, value) {
+      const labels = this.el.unitLabels?.[unit];
+      const label = this.el.querySelector(`.wm-countdown .${unit} .text`)?.firstElementChild;
+      if (!labels || !label) return;
+      const text = Number(value) === 1 ? labels.singular : labels.plural;
+      if (label.innerHTML !== text) label.innerHTML = text;
+    }
+
     hideCountdownUnit(unit) {
       const section = this.el.querySelector(`.wm-countdown .${unit}.countdown-section`);
       if (section) section.style.display = 'none';
@@ -244,9 +252,13 @@ class WMCountdownTimer {
         seconds = seconds < 10 ? '0' + seconds : seconds;
 
         this.setDigitContent(countdownDays, days);
+        this.setUnitLabel('days', days);
         this.setDigitContent(countdownHours, hours);
+        this.setUnitLabel('hours', hours);
         this.setDigitContent(countdownMinutes, minutes);
+        this.setUnitLabel('minutes', minutes);
         this.setDigitContent(countdownSeconds, seconds);
+        this.setUnitLabel('seconds', seconds);
       } else if (this.el.countdownFormat === `hhmmss`) {
         let hours = Math.floor(distance / (1000 * 60 * 60));
         let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
@@ -257,8 +269,11 @@ class WMCountdownTimer {
         seconds = seconds < 10 ? '0' + seconds : seconds;
 
         this.setDigitContent(countdownHours, hours);
+        this.setUnitLabel('hours', hours);
         this.setDigitContent(countdownMinutes, minutes);
+        this.setUnitLabel('minutes', minutes);
         this.setDigitContent(countdownSeconds, seconds);
+        this.setUnitLabel('seconds', seconds);
 
         this.hideCountdownUnit('days');
       } else if (this.el.countdownFormat === `ddhh`) {
@@ -269,7 +284,9 @@ class WMCountdownTimer {
         hours = hours < 10 ? '0' + hours : hours;
 
         this.setDigitContent(countdownDays, days);
+        this.setUnitLabel('days', days);
         this.setDigitContent(countdownHours, hours);
+        this.setUnitLabel('hours', hours);
 
         this.hideCountdownUnit('minutes');
         this.hideCountdownUnit('seconds');
@@ -281,9 +298,13 @@ class WMCountdownTimer {
 
       if (distance <= 0) {
         this.setDigitContent(countdownDays, '00');
+        this.setUnitLabel('days', '00');
         this.setDigitContent(countdownHours, '00');
+        this.setUnitLabel('hours', '00');
         this.setDigitContent(countdownMinutes, '00');
+        this.setUnitLabel('minutes', '00');
         this.setDigitContent(countdownSeconds, '00');
+        this.setUnitLabel('seconds', '00');
         this.stopCountdown();
         this.el.setAttribute('data-loading-state', 'complete');
         return false;
@@ -409,10 +430,14 @@ class WMCountdownTimer {
   const userSettings = window.wmCountdownTimerSettings ? window.wmCountdownTimerSettings : {};
   const defaultSettings = {
     date: new Date(Date.now()),
-    dayTag: 'Days', 
-    hourTag: 'Hours', 
-    minuteTag: 'Minutes', 
-    secondTag: 'Seconds', 
+    dayTag: 'Days',
+    hourTag: 'Hours',
+    minuteTag: 'Minutes',
+    secondTag: 'Seconds',
+    dayTagSingular: 'Day',
+    hourTagSingular: 'Hour',
+    minuteTagSingular: 'Minute',
+    secondTagSingular: 'Second',
     countdownFormat: 'ddhhmmss',
     timezone: 'Local',
     digitStyle: 'h4',
@@ -420,6 +445,21 @@ class WMCountdownTimer {
     displayStyle: 'default',
   };
   const mergedSettings = deepMerge({}, defaultSettings, userSettings);
+
+  // Singular labels only apply when the user hasn't set a custom plural tag,
+  // unless they've also set the matching singular tag themselves.
+  function resolveUnitLabels(settings) {
+    const units = { days: 'day', hours: 'hour', minutes: 'minute', seconds: 'second' };
+    const labels = {};
+    for (const [unit, key] of Object.entries(units)) {
+      const plural = settings[`${key}Tag`];
+      const hasCustomPlural = userSettings[`${key}Tag`] !== undefined;
+      const hasCustomSingular = userSettings[`${key}TagSingular`] !== undefined;
+      const singular = hasCustomSingular || !hasCustomPlural ? settings[`${key}TagSingular`] : plural;
+      labels[unit] = { plural, singular };
+    }
+    return labels;
+  }
 
   function normalizeDisplayStyle(value) {
     return String(value).replace(/['"]/g, '').trim().toLowerCase();
@@ -499,6 +539,7 @@ class WMCountdownTimer {
     el.countdownFormat = settings.countdownFormat;
     el.timezone = settings.timezone;
     el.displayStyle = settings.displayStyle;
+    el.unitLabels = resolveUnitLabels(settings);
     el.dataset.displayStyle = settings.displayStyle;
 
     const isFlip = settings.displayStyle === 'flip';
